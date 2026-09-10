@@ -1,0 +1,132 @@
+{
+  "name": "incomplete-work",
+  "description": "Only one of two filters installed and no further evidence exists. The job must never reach CLOSED (INV-001, INV-002).",
+  "job": {
+    "id": "JOB-2080",
+    "customer_id": "CUS-001",
+    "technician_id": "TECH-004",
+    "technician_name": "Daniel",
+    "description": "Replace 2 x Air Filter A - rooftop HVAC unit",
+    "site_address": "1400 Harbour Way",
+    "authorized_amount": 300.0,
+    "max_additional_spend_without_approval": 0.0,
+    "requirements": [
+      {
+        "type": "photo_before",
+        "description": "Before photo of the HVAC unit"
+      },
+      {
+        "type": "photo_after",
+        "description": "After photo showing the installed filters"
+      },
+      {
+        "type": "parts_receipt",
+        "description": "Parts receipt"
+      },
+      {
+        "type": "customer_signature",
+        "description": "Customer signature"
+      },
+      {
+        "type": "installation_quantity",
+        "description": "Install 2 x Air Filter A",
+        "expected_quantity": 2,
+        "part_number": "HVAC-FILTER-A"
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "type": "image",
+      "filename": "before-photo.jpg",
+      "text": "before photo",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "stage": "before",
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "site_photo",
+              "confidence": 0.95,
+              "detail": "before photo"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "image",
+      "filename": "after-photo.jpg",
+      "text": "after photo",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "stage": "after",
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "installed_component",
+              "confidence": 0.96,
+              "detail": "after photo",
+              "component": "HVAC-FILTER-A",
+              "quantity": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "receipt",
+      "filename": "receipt.pdf",
+      "text": "SUPPLYCO 1 x HVAC-FILTER-A @ 54.0 = 54.0",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "line_items": [
+          {
+            "description": "Air Filter A",
+            "part_number": "HVAC-FILTER-A",
+            "quantity": 1,
+            "unit_price": 54.0,
+            "total_price": 54.0
+          }
+        ],
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "purchased_line_item",
+              "confidence": 0.97,
+              "component": "HVAC-FILTER-A",
+              "quantity": 1,
+              "detail": "1 x Air Filter A"
+            },
+            {
+              "type": "amount_paid",
+              "confidence": 0.97,
+              "value": 54.0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "signature",
+      "filename": "signature.png",
+      "text": "customer signature",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "signature_present",
+              "confidence": 0.98
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "followup_evidence": [],
+  "expected": {
+    "final_status": "WAITING_FOR_EVIDENCE",
+    "note": "no evidence exists for the second installation"
+  }
+}

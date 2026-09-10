@@ -1,0 +1,1046 @@
+{
+  "job": {
+    "id": "JOB-1842",
+    "customer_id": "CUS-001",
+    "technician_id": "TECH-004",
+    "technician_name": "Daniel",
+    "status": "CLOSED",
+    "description": "Replace 2 x Air Filter A - rooftop HVAC unit",
+    "site_address": "1400 Harbour Way, Unit 3",
+    "authorized_amount": 300.0,
+    "max_additional_spend_without_approval": 0.0,
+    "final_amount": 354.0,
+    "created_at": "2026-09-10T09:44:13.810419Z",
+    "completed_at": null,
+    "closed_at": "2026-09-10T09:44:13.943439Z",
+    "metadata": {}
+  },
+  "requirements": [
+    {
+      "id": "REQ-349BABF8",
+      "job_id": "JOB-1842",
+      "type": "photo_before",
+      "description": "Before photo of the HVAC unit",
+      "required": true,
+      "status": "VERIFIED",
+      "expected_quantity": null,
+      "part_number": null,
+      "supporting_claim_ids": [
+        "CLM-FE871A26"
+      ],
+      "notes": null
+    },
+    {
+      "id": "REQ-70C78093",
+      "job_id": "JOB-1842",
+      "type": "photo_after",
+      "description": "After photo showing the installed filters",
+      "required": true,
+      "status": "VERIFIED",
+      "expected_quantity": null,
+      "part_number": null,
+      "supporting_claim_ids": [
+        "CLM-B0AD9E94"
+      ],
+      "notes": null
+    },
+    {
+      "id": "REQ-19E1A4A9",
+      "job_id": "JOB-1842",
+      "type": "parts_receipt",
+      "description": "Parts receipt",
+      "required": true,
+      "status": "VERIFIED",
+      "expected_quantity": null,
+      "part_number": null,
+      "supporting_claim_ids": [
+        "CLM-3A100C09",
+        "CLM-E738244B"
+      ],
+      "notes": null
+    },
+    {
+      "id": "REQ-BDEBD23F",
+      "job_id": "JOB-1842",
+      "type": "customer_signature",
+      "description": "Customer signature",
+      "required": true,
+      "status": "VERIFIED",
+      "expected_quantity": null,
+      "part_number": null,
+      "supporting_claim_ids": [
+        "CLM-81E94287"
+      ],
+      "notes": null
+    },
+    {
+      "id": "REQ-44C2CC80",
+      "job_id": "JOB-1842",
+      "type": "installation_quantity",
+      "description": "Install 2 x Air Filter A",
+      "required": true,
+      "status": "VERIFIED",
+      "expected_quantity": 2,
+      "part_number": "HVAC-FILTER-A",
+      "supporting_claim_ids": [
+        "CLM-B0AD9E94"
+      ],
+      "notes": "3 performed against 2 authorized."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "EVID-D33D9C72",
+      "job_id": "JOB-1842",
+      "type": "image",
+      "storage_url": "/api/evidence/blob/JOB-1842/4ae06d0ae480-before-unit.jpg",
+      "sha256": "4ae06d0ae480c5db9b825b4f516fe264487dd57804d6fb22e203903d8243f409",
+      "uploaded_by": "TECH-004",
+      "filename": "before-unit.jpg",
+      "content_type": null,
+      "created_at": "2026-09-10T09:44:13.825775Z",
+      "processed_at": "2026-09-10T09:44:13.849245Z",
+      "observations": [
+        {
+          "type": "site_photo",
+          "confidence": 0.96,
+          "component": null,
+          "quantity": null,
+          "value": null,
+          "detail": "rooftop HVAC unit, access panel open, three dirty filters visible"
+        }
+      ],
+      "transcript": null,
+      "superseded_by": null,
+      "metadata": {
+        "stage": "before",
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "site_photo",
+              "confidence": 0.96,
+              "detail": "rooftop HVAC unit, access panel open, three dirty filters visible"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "EVID-263117B0",
+      "job_id": "JOB-1842",
+      "type": "receipt",
+      "storage_url": "/api/evidence/blob/JOB-1842/39318e437a90-receipt-parts.pdf",
+      "sha256": "39318e437a90a9828edc5f1471d33b6802fccfeb025e6cf8b60f37af5456088b",
+      "uploaded_by": "TECH-004",
+      "filename": "receipt-parts.pdf",
+      "content_type": null,
+      "created_at": "2026-09-10T09:44:13.828432Z",
+      "processed_at": "2026-09-10T09:44:13.850836Z",
+      "observations": [
+        {
+          "type": "purchased_line_item",
+          "confidence": 0.97,
+          "component": "HVAC-FILTER-A",
+          "quantity": 3,
+          "value": null,
+          "detail": "SupplyCo receipt, 3 x Air Filter A at 54.00"
+        },
+        {
+          "type": "amount_paid",
+          "confidence": 0.97,
+          "component": null,
+          "quantity": null,
+          "value": 162.0,
+          "detail": "receipt total 162.00"
+        }
+      ],
+      "transcript": null,
+      "superseded_by": null,
+      "metadata": {
+        "line_items": [
+          {
+            "description": "Air Filter A",
+            "part_number": "HVAC-FILTER-A",
+            "quantity": 3,
+            "unit_price": 54.0,
+            "total_price": 162.0
+          }
+        ],
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "purchased_line_item",
+              "confidence": 0.97,
+              "component": "HVAC-FILTER-A",
+              "quantity": 3,
+              "detail": "SupplyCo receipt, 3 x Air Filter A at 54.00"
+            },
+            {
+              "type": "amount_paid",
+              "confidence": 0.97,
+              "value": 162.0,
+              "detail": "receipt total 162.00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "EVID-92CCBFA1",
+      "job_id": "JOB-1842",
+      "type": "image",
+      "storage_url": "/api/evidence/blob/JOB-1842/6f5b2fefb445-after-install.jpg",
+      "sha256": "6f5b2fefb445a71c49f4e1fc6e691e6b57dadb8790adbabd782a10e9ac97f437",
+      "uploaded_by": "TECH-004",
+      "filename": "after-install.jpg",
+      "content_type": null,
+      "created_at": "2026-09-10T09:44:13.830869Z",
+      "processed_at": "2026-09-10T09:44:13.852606Z",
+      "observations": [
+        {
+          "type": "installed_component",
+          "confidence": 0.94,
+          "component": "HVAC-FILTER-A",
+          "quantity": 2,
+          "value": null,
+          "detail": "two new filters clearly seated; a third bay is out of frame"
+        }
+      ],
+      "transcript": null,
+      "superseded_by": null,
+      "metadata": {
+        "stage": "after",
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "installed_component",
+              "confidence": 0.94,
+              "component": "HVAC-FILTER-A",
+              "quantity": 2,
+              "detail": "two new filters clearly seated; a third bay is out of frame"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "EVID-CB68F27C",
+      "job_id": "JOB-1842",
+      "type": "signature",
+      "storage_url": "/api/evidence/blob/JOB-1842/6d4e1d8f5bf6-customer-signature.png",
+      "sha256": "6d4e1d8f5bf6c9194bc4747fca82fe38d62391e7cfe033866e4cf8e383ef44ca",
+      "uploaded_by": "TECH-004",
+      "filename": "customer-signature.png",
+      "content_type": null,
+      "created_at": "2026-09-10T09:44:13.833220Z",
+      "processed_at": "2026-09-10T09:44:13.854088Z",
+      "observations": [
+        {
+          "type": "signature_present",
+          "confidence": 0.98,
+          "component": null,
+          "quantity": null,
+          "value": null,
+          "detail": "customer signature captured on site"
+        }
+      ],
+      "transcript": null,
+      "superseded_by": null,
+      "metadata": {
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "signature_present",
+              "confidence": 0.98,
+              "detail": "customer signature captured on site"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "EVID-6C07448A",
+      "job_id": "JOB-1842",
+      "type": "voice_note",
+      "storage_url": "/api/evidence/blob/JOB-1842/f87fbb4d15a2-tech-note.m4a",
+      "sha256": "f87fbb4d15a21101c2f672369a0732c35a85bb57dd0c742f4ea8bb780fc1c4f6",
+      "uploaded_by": "TECH-004",
+      "filename": "tech-note.m4a",
+      "content_type": null,
+      "created_at": "2026-09-10T09:44:13.835541Z",
+      "processed_at": "2026-09-10T09:44:13.855363Z",
+      "observations": [
+        {
+          "type": "spoken_statement",
+          "confidence": 0.92,
+          "component": "HVAC-FILTER-A",
+          "quantity": 3,
+          "value": null,
+          "detail": "technician states three filters were replaced"
+        }
+      ],
+      "transcript": "Replaced all three damaged filters. The third one was badly damaged so I replaced it as well.",
+      "superseded_by": null,
+      "metadata": {
+        "fixture_reading": {
+          "transcript": "Replaced all three damaged filters. The third one was badly damaged so I replaced it as well.",
+          "observations": [
+            {
+              "type": "spoken_statement",
+              "confidence": 0.92,
+              "component": "HVAC-FILTER-A",
+              "quantity": 3,
+              "detail": "technician states three filters were replaced"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "EVID-E8363675",
+      "job_id": "JOB-1842",
+      "type": "image",
+      "storage_url": "/api/evidence/blob/JOB-1842/55438069de71-after-install-third.jpg",
+      "sha256": "55438069de71da4ddc3a42f346c4dc82dc1b7dda9ee3a464d2a863f586736091",
+      "uploaded_by": "TECH-004",
+      "filename": "after-install-third.jpg",
+      "content_type": null,
+      "created_at": "2026-09-10T09:44:13.877621Z",
+      "processed_at": "2026-09-10T09:44:13.886649Z",
+      "observations": [
+        {
+          "type": "installed_component",
+          "confidence": 0.95,
+          "component": "HVAC-FILTER-A",
+          "quantity": 3,
+          "value": null,
+          "detail": "third filter bay now visible, all three new filters seated"
+        }
+      ],
+      "transcript": null,
+      "superseded_by": null,
+      "metadata": {
+        "stage": "after",
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "installed_component",
+              "confidence": 0.95,
+              "component": "HVAC-FILTER-A",
+              "quantity": 3,
+              "detail": "third filter bay now visible, all three new filters seated"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "claims": [
+    {
+      "id": "CLM-FE871A26",
+      "job_id": "JOB-1842",
+      "type": "site_visited",
+      "source_evidence_id": "EVID-D33D9C72",
+      "source": "image:TECH-004",
+      "part_number": null,
+      "quantity": null,
+      "amount": null,
+      "value": null,
+      "confidence": 0.96,
+      "status": "PROPOSED",
+      "created_at": "2026-09-10T09:44:13.919144Z"
+    },
+    {
+      "id": "CLM-3A100C09",
+      "job_id": "JOB-1842",
+      "type": "part_purchased",
+      "source_evidence_id": "EVID-263117B0",
+      "source": "receipt:TECH-004",
+      "part_number": "HVAC-FILTER-A",
+      "quantity": 3,
+      "amount": null,
+      "value": null,
+      "confidence": 0.97,
+      "status": "PROPOSED",
+      "created_at": "2026-09-10T09:44:13.919182Z"
+    },
+    {
+      "id": "CLM-E738244B",
+      "job_id": "JOB-1842",
+      "type": "price_paid",
+      "source_evidence_id": "EVID-263117B0",
+      "source": "receipt:TECH-004",
+      "part_number": null,
+      "quantity": null,
+      "amount": 162.0,
+      "value": 162.0,
+      "confidence": 0.97,
+      "status": "PROPOSED",
+      "created_at": "2026-09-10T09:44:13.919208Z"
+    },
+    {
+      "id": "CLM-B0AD9E94",
+      "job_id": "JOB-1842",
+      "type": "part_installed",
+      "source_evidence_id": "EVID-92CCBFA1",
+      "source": "image:TECH-004",
+      "part_number": "HVAC-FILTER-A",
+      "quantity": 3,
+      "amount": null,
+      "value": null,
+      "confidence": 0.95,
+      "status": "PROPOSED",
+      "created_at": "2026-09-10T09:44:13.919232Z"
+    },
+    {
+      "id": "CLM-81E94287",
+      "job_id": "JOB-1842",
+      "type": "customer_accepted",
+      "source_evidence_id": "EVID-CB68F27C",
+      "source": "signature:TECH-004",
+      "part_number": null,
+      "quantity": null,
+      "amount": null,
+      "value": null,
+      "confidence": 0.98,
+      "status": "PROPOSED",
+      "created_at": "2026-09-10T09:44:13.919255Z"
+    },
+    {
+      "id": "CLM-61598A08",
+      "job_id": "JOB-1842",
+      "type": "technician_statement",
+      "source_evidence_id": "EVID-6C07448A",
+      "source": "voice_note:TECH-004",
+      "part_number": "HVAC-FILTER-A",
+      "quantity": 3,
+      "amount": null,
+      "value": null,
+      "confidence": 0.92,
+      "status": "PROPOSED",
+      "created_at": "2026-09-10T09:44:13.919280Z"
+    }
+  ],
+  "links": [
+    {
+      "claim_id": "CLM-FE871A26",
+      "evidence_id": "EVID-D33D9C72",
+      "relationship": "SUPPORTS",
+      "confidence": 0.96,
+      "rationale": "rooftop HVAC unit, access panel open, three dirty filters visible"
+    },
+    {
+      "claim_id": "CLM-3A100C09",
+      "evidence_id": "EVID-263117B0",
+      "relationship": "SUPPORTS",
+      "confidence": 0.97,
+      "rationale": "SupplyCo receipt, 3 x Air Filter A at 54.00"
+    },
+    {
+      "claim_id": "CLM-E738244B",
+      "evidence_id": "EVID-263117B0",
+      "relationship": "SUPPORTS",
+      "confidence": 0.97,
+      "rationale": "receipt total 162.00"
+    },
+    {
+      "claim_id": "CLM-B0AD9E94",
+      "evidence_id": "EVID-92CCBFA1",
+      "relationship": "SUPPORTS",
+      "confidence": 0.94,
+      "rationale": "two new filters clearly seated; a third bay is out of frame"
+    },
+    {
+      "claim_id": "CLM-81E94287",
+      "evidence_id": "EVID-CB68F27C",
+      "relationship": "SUPPORTS",
+      "confidence": 0.98,
+      "rationale": "customer signature captured on site"
+    },
+    {
+      "claim_id": "CLM-61598A08",
+      "evidence_id": "EVID-6C07448A",
+      "relationship": "SUPPORTS",
+      "confidence": 0.92,
+      "rationale": "technician states three filters were replaced"
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "CON-9C3E3BBB",
+      "job_id": "JOB-1842",
+      "type": "quantity_mismatch",
+      "severity": "BLOCKING",
+      "description": "3 units verified but only 2 were authorized for Install 2 x Air Filter A.",
+      "status": "HUMAN_APPROVED",
+      "policy_id": null,
+      "requirement_id": "REQ-44C2CC80",
+      "claim_ids": [
+        "CLM-5273C196"
+      ],
+      "evidence_ids": [],
+      "financial_impact": 54.0,
+      "expected_value": 2,
+      "observed_value": 3,
+      "created_at": "2026-09-10T09:44:13.893264Z",
+      "resolved_at": "2026-09-10T09:44:13.907451Z",
+      "resolution_decision_id": "DEC-88302B3D"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "DEC-88302B3D",
+      "job_id": "JOB-1842",
+      "conflict_id": "CON-9C3E3BBB",
+      "question": "3 units verified but only 2 were authorized for Install 2 x Air Filter A. Approve the additional 54.00?",
+      "recommended_action": "APPROVE",
+      "policy": "Parts installed outside the original approved scope require supervisor approval.",
+      "policy_id": "POL-003",
+      "financial_impact": 54.0,
+      "evidence_ids": [
+        "EVID-92CCBFA1"
+      ],
+      "requested_from": "supervisor",
+      "status": "RESOLVED",
+      "decision": "APPROVE",
+      "comment": null,
+      "decided_by": "Sarah",
+      "created_at": "2026-09-10T09:44:13.900732Z",
+      "resolved_at": "2026-09-10T09:44:13.905489Z"
+    }
+  ],
+  "events": [
+    {
+      "id": "EVT-43FE99A0",
+      "job_id": "JOB-1842",
+      "type": "JOB_CREATED",
+      "payload": {},
+      "message": "Work order created",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.811680Z"
+    },
+    {
+      "id": "EVT-A2BC4BDB",
+      "job_id": "JOB-1842",
+      "type": "JOB_COMPLETED",
+      "payload": {},
+      "message": "Technician completed job",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.837280Z"
+    },
+    {
+      "id": "EVT-94EE8AED",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "LOAD_CONTEXT"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.837965Z"
+    },
+    {
+      "id": "EVT-36F35385",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_COMPLETED",
+      "payload": {
+        "node": "LOAD_CONTEXT"
+      },
+      "message": "Loaded job context",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.839006Z"
+    },
+    {
+      "id": "EVT-6868FA16",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "PARSE_EVIDENCE"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.841114Z"
+    },
+    {
+      "id": "EVT-B8F4A3DF",
+      "job_id": "JOB-1842",
+      "type": "EVIDENCE_PROCESSED",
+      "payload": {
+        "node": "PARSE_EVIDENCE",
+        "artifacts": 5,
+        "claims": 6
+      },
+      "message": "5 evidence artifacts processed",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.857673Z"
+    },
+    {
+      "id": "EVT-CAD4D76C",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "RECONCILE"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.858774Z"
+    },
+    {
+      "id": "EVT-24FC7BE0",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_COMPLETED",
+      "payload": {
+        "node": "RECONCILE"
+      },
+      "message": "5/5 requirements verified",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.864141Z"
+    },
+    {
+      "id": "EVT-7B53536C",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "POLICY_CHECK"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.865206Z"
+    },
+    {
+      "id": "EVT-0C3284E4",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "REQUEST_EVIDENCE"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.866098Z"
+    },
+    {
+      "id": "EVT-0144570D",
+      "job_id": "JOB-1842",
+      "type": "ACTION_FAILED",
+      "payload": {
+        "action": "request_evidence",
+        "reason": "REQ-44C2CC80 is already verified",
+        "invariant": null
+      },
+      "message": "request_evidence refused: REQ-44C2CC80 is already verified",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.869246Z"
+    },
+    {
+      "id": "EVT-80C82E2A",
+      "job_id": "JOB-1842",
+      "type": "EVIDENCE_UPLOADED",
+      "payload": {
+        "evidence_id": "EVID-E8363675"
+      },
+      "message": "New image received",
+      "actor": "TECH-004",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.878889Z"
+    },
+    {
+      "id": "EVT-FE4AE508",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "LOAD_CONTEXT"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.879859Z"
+    },
+    {
+      "id": "EVT-35738372",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_COMPLETED",
+      "payload": {
+        "node": "LOAD_CONTEXT"
+      },
+      "message": "Loaded job context",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.881392Z"
+    },
+    {
+      "id": "EVT-403E194E",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "PARSE_EVIDENCE"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.884329Z"
+    },
+    {
+      "id": "EVT-FDFB7DB8",
+      "job_id": "JOB-1842",
+      "type": "EVIDENCE_PROCESSED",
+      "payload": {
+        "node": "PARSE_EVIDENCE",
+        "artifacts": 6,
+        "claims": 6
+      },
+      "message": "6 evidence artifacts processed",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.889590Z"
+    },
+    {
+      "id": "EVT-34981941",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "RECONCILE"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.890919Z"
+    },
+    {
+      "id": "EVT-DBF504E0",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_COMPLETED",
+      "payload": {
+        "node": "RECONCILE"
+      },
+      "message": "5/5 requirements verified",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.897068Z"
+    },
+    {
+      "id": "EVT-6489E0E4",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "POLICY_CHECK"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.897933Z"
+    },
+    {
+      "id": "EVT-3C55AF89",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "HUMAN_DECISION"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.898841Z"
+    },
+    {
+      "id": "EVT-6CC33FA7",
+      "job_id": "JOB-1842",
+      "type": "DECISION_REQUESTED",
+      "payload": {
+        "action": "create_decision",
+        "decision_id": "DEC-88302B3D",
+        "conflict_id": "CON-9C3E3BBB",
+        "question": "3 units verified but only 2 were authorized for Install 2 x Air Filter A. Approve the additional 54.00?",
+        "recommended_action": "APPROVE",
+        "financial_impact": 54.0
+      },
+      "message": "Supervisor approval requested: 3 units verified but only 2 were authorized for Install 2 x Air Filter A. Approve the additional 54.00?",
+      "actor": "fieldproof",
+      "idempotency_key": "create_decision:JOB-1842:CON-9C3E3BBB:v1",
+      "created_at": "2026-09-10T09:44:13.901708Z"
+    },
+    {
+      "id": "EVT-7BF14DD8",
+      "job_id": "JOB-1842",
+      "type": "DECISION_RESOLVED",
+      "payload": {
+        "decision_id": "DEC-88302B3D",
+        "conflict_id": "CON-9C3E3BBB",
+        "decision": "APPROVE",
+        "decided_by": "Sarah",
+        "financial_impact": 54.0
+      },
+      "message": "Approve by Sarah",
+      "actor": "Sarah",
+      "idempotency_key": "resolve_decision:JOB-1842:DEC-88302B3D:v1",
+      "created_at": "2026-09-10T09:44:13.908464Z"
+    },
+    {
+      "id": "EVT-CB828B7B",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "LOAD_CONTEXT"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.909556Z"
+    },
+    {
+      "id": "EVT-14CACDA6",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_COMPLETED",
+      "payload": {
+        "node": "LOAD_CONTEXT"
+      },
+      "message": "Loaded job context",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.912152Z"
+    },
+    {
+      "id": "EVT-309C48B0",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "PARSE_EVIDENCE"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.915800Z"
+    },
+    {
+      "id": "EVT-47EAABBA",
+      "job_id": "JOB-1842",
+      "type": "EVIDENCE_PROCESSED",
+      "payload": {
+        "node": "PARSE_EVIDENCE",
+        "artifacts": 6,
+        "claims": 6
+      },
+      "message": "6 evidence artifacts processed",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.920893Z"
+    },
+    {
+      "id": "EVT-8934B3B3",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "RECONCILE"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.921884Z"
+    },
+    {
+      "id": "EVT-421170DD",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_COMPLETED",
+      "payload": {
+        "node": "RECONCILE"
+      },
+      "message": "5/5 requirements verified",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.927210Z"
+    },
+    {
+      "id": "EVT-183024FF",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "POLICY_CHECK"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.928218Z"
+    },
+    {
+      "id": "EVT-811E38A3",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "ACTION"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.929169Z"
+    },
+    {
+      "id": "EVT-408A38A5",
+      "job_id": "JOB-1842",
+      "type": "JOB_VERIFIED",
+      "payload": {
+        "node": "ACTION"
+      },
+      "message": "Job verified",
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.931947Z"
+    },
+    {
+      "id": "EVT-FC9FC297",
+      "job_id": "JOB-1842",
+      "type": "ACTION_EXECUTED",
+      "payload": {
+        "action": "generate_report",
+        "report": {
+          "job_id": "JOB-1842",
+          "customer_id": "CUS-001",
+          "technician_id": "TECH-004",
+          "work_completed": [
+            {
+              "requirement": "Before photo of the HVAC unit",
+              "status": "VERIFIED",
+              "notes": null
+            },
+            {
+              "requirement": "After photo showing the installed filters",
+              "status": "VERIFIED",
+              "notes": null
+            },
+            {
+              "requirement": "Parts receipt",
+              "status": "VERIFIED",
+              "notes": null
+            },
+            {
+              "requirement": "Customer signature",
+              "status": "VERIFIED",
+              "notes": null
+            },
+            {
+              "requirement": "Install 2 x Air Filter A",
+              "status": "VERIFIED",
+              "notes": "3 performed against 2 authorized."
+            }
+          ],
+          "parts_used": [
+            {
+              "part_number": "HVAC-FILTER-A",
+              "quantity": 3
+            }
+          ],
+          "evidence_summary": [
+            {
+              "evidence_id": "EVID-D33D9C72",
+              "type": "image",
+              "sha256": "4ae06d0ae480c5db9b825b4f516fe264487dd57804d6fb22e203903d8243f409",
+              "uploaded_by": "TECH-004"
+            },
+            {
+              "evidence_id": "EVID-263117B0",
+              "type": "receipt",
+              "sha256": "39318e437a90a9828edc5f1471d33b6802fccfeb025e6cf8b60f37af5456088b",
+              "uploaded_by": "TECH-004"
+            },
+            {
+              "evidence_id": "EVID-92CCBFA1",
+              "type": "image",
+              "sha256": "6f5b2fefb445a71c49f4e1fc6e691e6b57dadb8790adbabd782a10e9ac97f437",
+              "uploaded_by": "TECH-004"
+            },
+            {
+              "evidence_id": "EVID-CB68F27C",
+              "type": "signature",
+              "sha256": "6d4e1d8f5bf6c9194bc4747fca82fe38d62391e7cfe033866e4cf8e383ef44ca",
+              "uploaded_by": "TECH-004"
+            },
+            {
+              "evidence_id": "EVID-6C07448A",
+              "type": "voice_note",
+              "sha256": "f87fbb4d15a21101c2f672369a0732c35a85bb57dd0c742f4ea8bb780fc1c4f6",
+              "uploaded_by": "TECH-004"
+            },
+            {
+              "evidence_id": "EVID-E8363675",
+              "type": "image",
+              "sha256": "55438069de71da4ddc3a42f346c4dc82dc1b7dda9ee3a464d2a863f586736091",
+              "uploaded_by": "TECH-004"
+            }
+          ],
+          "exceptions": [
+            {
+              "conflict_id": "CON-9C3E3BBB",
+              "type": "quantity_mismatch",
+              "status": "HUMAN_APPROVED"
+            }
+          ],
+          "approvals": [
+            {
+              "decision_id": "DEC-88302B3D",
+              "decision": "APPROVE",
+              "decided_by": "Sarah"
+            }
+          ],
+          "final_billable_amount": 354.0
+        }
+      },
+      "message": "Closeout report generated",
+      "actor": "fieldproof",
+      "idempotency_key": "generate_report:JOB-1842:v1",
+      "created_at": "2026-09-10T09:44:13.934801Z"
+    },
+    {
+      "id": "EVT-58A898D8",
+      "job_id": "JOB-1842",
+      "type": "ACTION_EXECUTED",
+      "payload": {
+        "action": "create_invoice",
+        "invoice": {
+          "job_id": "JOB-1842",
+          "customer_id": "CUS-001",
+          "amount": 354.0,
+          "status": "ready_to_invoice"
+        }
+      },
+      "message": "Invoice payload prepared: 354.00",
+      "actor": "fieldproof",
+      "idempotency_key": "create_invoice:JOB-1842:v1",
+      "created_at": "2026-09-10T09:44:13.938450Z"
+    },
+    {
+      "id": "EVT-31F832E0",
+      "job_id": "JOB-1842",
+      "type": "JOB_CLOSED",
+      "payload": {
+        "action": "close_job",
+        "status": "CLOSED",
+        "final_amount": 354.0
+      },
+      "message": "Job closed automatically",
+      "actor": "fieldproof",
+      "idempotency_key": "close_job:JOB-1842:v1",
+      "created_at": "2026-09-10T09:44:13.944513Z"
+    },
+    {
+      "id": "EVT-B5DDBEE3",
+      "job_id": "JOB-1842",
+      "type": "AGENT_STEP_STARTED",
+      "payload": {
+        "node": "DONE"
+      },
+      "message": null,
+      "actor": "fieldproof",
+      "idempotency_key": null,
+      "created_at": "2026-09-10T09:44:13.945767Z"
+    }
+  ]
+}

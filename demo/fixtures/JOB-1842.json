@@ -1,0 +1,183 @@
+{
+  "name": "hero-unauthorized-extra-part",
+  "description": "PRD 12 - the winning demo. Missing evidence is recovered autonomously, then one genuine scope conflict reaches a supervisor.",
+  "job": {
+    "id": "JOB-1842",
+    "customer_id": "CUS-001",
+    "technician_id": "TECH-004",
+    "technician_name": "Daniel",
+    "description": "Replace 2 x Air Filter A - rooftop HVAC unit",
+    "site_address": "1400 Harbour Way, Unit 3",
+    "authorized_amount": 300.0,
+    "max_additional_spend_without_approval": 0.0,
+    "requirements": [
+      {
+        "type": "photo_before",
+        "description": "Before photo of the HVAC unit",
+        "required": true
+      },
+      {
+        "type": "photo_after",
+        "description": "After photo showing the installed filters",
+        "required": true
+      },
+      {
+        "type": "parts_receipt",
+        "description": "Parts receipt",
+        "required": true
+      },
+      {
+        "type": "customer_signature",
+        "description": "Customer signature",
+        "required": true
+      },
+      {
+        "type": "installation_quantity",
+        "description": "Install 2 x Air Filter A",
+        "required": true,
+        "expected_quantity": 2,
+        "part_number": "HVAC-FILTER-A"
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "type": "image",
+      "filename": "before-unit.jpg",
+      "text": "before photo of rooftop HVAC unit with dirty filters",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "stage": "before",
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "site_photo",
+              "confidence": 0.96,
+              "detail": "rooftop HVAC unit, access panel open, three dirty filters visible"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "receipt",
+      "filename": "receipt-parts.pdf",
+      "text": "SUPPLYCO 3 x HVAC-FILTER-A @ 54.00 = 162.00",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "line_items": [
+          {
+            "description": "Air Filter A",
+            "part_number": "HVAC-FILTER-A",
+            "quantity": 3,
+            "unit_price": 54.0,
+            "total_price": 162.0
+          }
+        ],
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "purchased_line_item",
+              "confidence": 0.97,
+              "component": "HVAC-FILTER-A",
+              "quantity": 3,
+              "detail": "SupplyCo receipt, 3 x Air Filter A at 54.00"
+            },
+            {
+              "type": "amount_paid",
+              "confidence": 0.97,
+              "value": 162.0,
+              "detail": "receipt total 162.00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "image",
+      "filename": "after-install.jpg",
+      "text": "after photo, two new filters clearly seated",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "stage": "after",
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "installed_component",
+              "confidence": 0.94,
+              "component": "HVAC-FILTER-A",
+              "quantity": 2,
+              "detail": "two new filters clearly seated; a third bay is out of frame"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "signature",
+      "filename": "customer-signature.png",
+      "text": "signature of M. Alvarez",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "signature_present",
+              "confidence": 0.98,
+              "detail": "customer signature captured on site"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "voice_note",
+      "filename": "tech-note.m4a",
+      "text": "Replaced all three damaged filters. The third one was badly damaged so I replaced it as well.",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "fixture_reading": {
+          "transcript": "Replaced all three damaged filters. The third one was badly damaged so I replaced it as well.",
+          "observations": [
+            {
+              "type": "spoken_statement",
+              "confidence": 0.92,
+              "component": "HVAC-FILTER-A",
+              "quantity": 3,
+              "detail": "technician states three filters were replaced"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "followup_evidence": [
+    {
+      "type": "image",
+      "filename": "after-install-third.jpg",
+      "text": "third installed filter, close up",
+      "uploaded_by": "TECH-004",
+      "metadata": {
+        "stage": "after",
+        "fixture_reading": {
+          "observations": [
+            {
+              "type": "installed_component",
+              "confidence": 0.95,
+              "component": "HVAC-FILTER-A",
+              "quantity": 3,
+              "detail": "third filter bay now visible, all three new filters seated"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expected": {
+    "technician_requests": 1,
+    "supervisor_decisions": 1,
+    "financial_impact": 54.0,
+    "final_status": "CLOSED",
+    "final_amount": 354.0
+  }
+}
