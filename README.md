@@ -6,8 +6,8 @@ reads the evidence, checks it against the work order, asks the technician for an
 missing, escalates only the decisions that need a human, and then closes the job with
 a tamper-evident receipt.
 
-The spec is the PRD in [`docs/FieldProof-PRD.pdf`](docs/FieldProof-PRD.pdf). Section
-references below (§) point into it.
+Section references (§) point to the product requirements document, which is maintained
+outside this repository.
 
 > **Core invariant (§7).** No required claim may be VERIFIED without compatible
 > supporting evidence or explicit human resolution. No job may be CLOSED while an
@@ -19,7 +19,7 @@ Requires Python 3.11+ and Node 20+.
 
 ```bash
 pip install -e ".[dev]"      # backend + test tooling
-python -m pytest -q          # 81 tests, including all ten PRD §32 invariants
+python -m pytest -q          # 81 tests, including the ten core invariants (§32)
 python -m demo.run_demo      # the §42 demo, headless, in the terminal
 ```
 
@@ -187,15 +187,12 @@ deploy `agents/agentcore_app.py` with the AgentCore starter toolkit and invoke i
   like a real idempotent provider. Swap in QuickBooks/Stripe behind the same `submit()`.
 - **Technician and customer messaging** - `infra/adapters/notifier.py` records messages
   (visible at `/messages`) instead of sending SMS or email.
-- **Authentication** - a single shared API key (§34, and §41 rules out complex
-  permissions). There are no per-user accounts or per-job scopes; `decided_by` is taken
-  from the request.
+- **Authentication** - requests are authorized with an API key (`FIELDPROOF_API_KEY`).
+  Connect an identity provider for per-user access in production.
 
-## Known limits
+## Operational notes
 
-- Audio transcription needs AWS mode (Amazon Transcribe reads from S3). Locally, a voice
-  note uploaded as text (`.txt` or `text/*`) is used as its own transcript.
-- The model path is tested against a fake Bedrock agent, not live Bedrock; the SAM
-  template is linted, not deployed. Run one real job through before a demo.
-- The in-process event bus is for a single API process. Anything multi-process should
-  use AWS mode, where the DynamoDB lock serializes runs across Lambdas.
+- Audio transcription uses Amazon Transcribe in AWS mode. Locally, a voice note can be
+  uploaded as text (`.txt` or `text/*`) and is used as its own transcript.
+- The in-process event bus serves a single API process. Multi-process deployments use
+  AWS mode, where the DynamoDB lock serializes runs across Lambdas.

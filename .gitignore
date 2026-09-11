@@ -25,3 +25,6 @@ Thumbs.db
 # AWS build output
 .aws-sam/
 .lambda-build/
+
+# Product requirements document - kept out of the repository
+docs/FieldProof-PRD.pdf
