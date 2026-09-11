@@ -9,9 +9,9 @@ import { CloseoutEngine } from "./hero/engine";
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 /**
- * Two headline directions were tested against the engine below. The second
- * restates the rail, so the first carries more: the animation already says
- * "verified" and "closed".
+ * Two headline directions, both tested against the engine below. "closed"
+ * takes a third line (pushing the engine's bottom edge under a 900px fold)
+ * and restates what the rail and outcome already say, so "prove" ships.
  */
 const HEADLINES = {
   prove: [["The", "fieldwork", "is", "done."], ["Now", "prove", "it."]],
@@ -38,7 +38,7 @@ export function Hero() {
   const engineTilt = useTransform(scrollYProgress, [0, 1], [0, 9]);
 
   return (
-    <section ref={section} aria-labelledby="hero-title" className="relative isolate overflow-hidden">
+    <section ref={section} aria-labelledby="hero-title" className="relative isolate overflow-x-clip">
       <div aria-hidden className="hero-ground absolute inset-x-0 top-0 -z-10 h-[70%]" />
 
       <div className="mx-auto flex min-h-[100dvh] max-w-[1280px] flex-col px-4 pt-20 pb-10 sm:px-6 lg:pt-[5.5rem]">

@@ -11,7 +11,7 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Check, Pause, Play } from "@phosphor-icons/react/dist/ssr";
 import { cx } from "@/lib/cx";
 import {
@@ -182,15 +182,16 @@ function Rail({
 
   return (
     <div className="flex items-center gap-3 border-b border-line px-3 py-2.5 sm:px-4">
-      <ol aria-hidden className="flex min-w-0 flex-1 items-center">
+      <div aria-hidden className="flex min-w-0 flex-1 items-center">
         {PHASES.map((p, i) => {
           const done = closed || (started && i < active);
           const current = started && i === active && !closed;
           return (
-            <li key={p.id} className={cx("flex min-w-0 items-center", i < PHASES.length - 1 && "flex-1")}>
+            <Fragment key={p.id}>
               <span
                 className={cx(
-                  "flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-2.5 pl-1 text-[12px] font-semibold transition-colors duration-500",
+                  "flex shrink-0 items-center gap-1.5 rounded-full py-1 pl-1 text-[12px] font-semibold transition-colors duration-500",
+                  current ? "pr-2.5" : "pr-1 md:pr-2.5",
                   current && "bg-accent-soft text-accent-ink",
                   done && (closed ? "text-verified-ink" : "text-ink"),
                   !current && !done && "text-faint",
@@ -207,7 +208,7 @@ function Rail({
                 <span className={cx("whitespace-nowrap", !current && "hidden md:inline")}>{p.label}</span>
               </span>
               {i < PHASES.length - 1 && (
-                <span className="relative mx-1.5 h-[2px] min-w-3 flex-1 overflow-hidden rounded-full bg-line">
+                <span className="relative mx-1 h-[2px] min-w-2 flex-1 overflow-hidden rounded-full bg-line md:mx-1.5">
                   <motion.span
                     className={cx("absolute inset-0 origin-left rounded-full", closed ? "bg-verified" : "bg-accent")}
                     initial={false}
@@ -216,10 +217,10 @@ function Rail({
                   />
                 </span>
               )}
-            </li>
+            </Fragment>
           );
         })}
-      </ol>
+      </div>
       {!reduce && (
         <button
           type="button"
@@ -400,14 +401,14 @@ function Table({
         </motion.div>
       )}
 
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence mode="wait">
         {lensDoc && f && (
           <motion.span
             key={`lens-${lensDoc}-${scanning}`}
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 6 }}
-            transition={{ duration: 0.25, ease: EASE }}
+            exit={{ opacity: 0, y: 6, transition: { duration: 0.12 } }}
+            transition={{ duration: 0.22, ease: EASE }}
             style={{ left: f.focus.x }}
             className={cx(
               "absolute top-3 z-[60] -ml-[5.5rem] flex w-44 items-center justify-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10.5px] font-semibold whitespace-nowrap",
@@ -498,13 +499,13 @@ function Ticker({ beat, reduce }: { beat: number; reduce: boolean }) {
       className="flex items-center gap-4 border-t border-line bg-canvas/40 px-4 py-2 font-mono text-[11px] text-muted"
     >
       <div className="relative h-4 min-w-0 flex-1 overflow-hidden">
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence initial={false} mode="wait">
           <motion.p
             key={beat}
-            initial={reduce ? false : { y: 14, opacity: 0 }}
+            initial={reduce ? false : { y: 12, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -14, opacity: 0 }}
-            transition={{ duration: 0.28, ease: EASE }}
+            exit={{ y: -12, opacity: 0, transition: { duration: 0.12 } }}
+            transition={{ duration: 0.24, ease: EASE }}
             className="absolute inset-0 truncate"
           >
             {b ? (
