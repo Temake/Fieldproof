@@ -10,7 +10,9 @@ adapter is a drop-in swap:
 
 from __future__ import annotations
 
+import logging
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +28,8 @@ from domain.models import (
     Requirement,
 )
 
+log = logging.getLogger("fieldproof.store")
+
 
 class JobNotFound(KeyError):
     pass
@@ -38,6 +42,8 @@ class MemoryJobStore:
         self._lock = threading.RLock()
         self._states: dict[str, JobState] = {}
         self._idempotency: dict[str, Any] = {}
+        self._run_locks: dict[str, tuple[str, float]] = {}
+        self._rerun: set[str] = set()
         self._dir = Path(data_dir) if data_dir else None
         if self._dir:
             self._dir.mkdir(parents=True, exist_ok=True)
@@ -54,7 +60,7 @@ class MemoryJobStore:
             try:
                 self._states[path.stem] = JobState.model_validate_json(path.read_text("utf-8"))
             except Exception:  # noqa: BLE001 - a corrupt demo file must not block boot
-                continue
+                log.warning("skipping unreadable job file %s", path)
 
     def _flush(self, job_id: str) -> None:
         if not self._dir:
@@ -65,6 +71,8 @@ class MemoryJobStore:
     # -- jobs -------------------------------------------------------------
     def create_job(self, job: Job, requirements: list[Requirement]) -> JobState:
         with self._lock:
+            if job.id in self._states:
+                raise ValueError(f"job {job.id} already exists")
             state = JobState(job=job, requirements=list(requirements))
             self._states[job.id] = state
             self._flush(job.id)
@@ -124,14 +132,10 @@ class MemoryJobStore:
             state.links = [link.model_copy(deep=True) for link in links]
             self._flush(job_id)
 
-    def replace_conflicts(self, job_id: str, conflicts: list[Conflict]) -> None:
-        """Replace open conflicts only; resolved ones are part of the audit trail."""
+    def set_conflicts(self, job_id: str, conflicts: list[Conflict]) -> None:
+        """Overwrite the job's conflicts. Merging is domain logic, not storage."""
         with self._lock:
-            state = self._states[job_id]
-            resolved = [c for c in state.conflicts if c.status.value != "OPEN"]
-            resolved_keys = {(c.type, c.requirement_id) for c in resolved}
-            fresh = [c for c in conflicts if (c.type, c.requirement_id) not in resolved_keys]
-            state.conflicts = resolved + [c.model_copy(deep=True) for c in fresh]
+            self._states[job_id].conflicts = [c.model_copy(deep=True) for c in conflicts]
             self._flush(job_id)
 
     def save_conflict(self, conflict: Conflict) -> Conflict:
@@ -191,6 +195,10 @@ class MemoryJobStore:
         with self._lock:
             return [e.model_copy(deep=True) for e in self._states[job_id].events]
 
+    def peek_idempotency(self, key: str) -> tuple[bool, Any]:
+        with self._lock:
+            return (key in self._idempotency), self._idempotency.get(key)
+
     def claim_idempotency_key(self, key: str, result: Any = None) -> tuple[bool, Any]:
         """PRD 33 - first caller wins, later callers get the recorded result."""
         with self._lock:
@@ -203,11 +211,46 @@ class MemoryJobStore:
         with self._lock:
             self._idempotency[key] = result
 
+    def release_idempotency_key(self, key: str) -> None:
+        """Undo a claim whose action failed, so a retry is not mistaken for a duplicate."""
+        with self._lock:
+            self._idempotency.pop(key, None)
+
+    # -- workflow run lock ------------------------------------------------
+    def try_acquire_run_lock(self, job_id: str, owner: str, ttl_seconds: float = 300) -> bool:
+        """One workflow run per job at a time. Expired locks are taken over."""
+        with self._lock:
+            held = self._run_locks.get(job_id)
+            if held and held[0] != owner and held[1] > time.monotonic():
+                return False
+            self._run_locks[job_id] = (owner, time.monotonic() + ttl_seconds)
+            return True
+
+    def release_run_lock(self, job_id: str, owner: str) -> None:
+        with self._lock:
+            held = self._run_locks.get(job_id)
+            if held and held[0] == owner:
+                del self._run_locks[job_id]
+
+    def request_rerun(self, job_id: str) -> None:
+        """An event arrived while a run was in flight - run again when it ends."""
+        with self._lock:
+            self._rerun.add(job_id)
+
+    def take_rerun(self, job_id: str) -> bool:
+        with self._lock:
+            if job_id in self._rerun:
+                self._rerun.discard(job_id)
+                return True
+            return False
+
     def reset(self) -> None:
         """Test and demo helper."""
         with self._lock:
             self._states.clear()
             self._idempotency.clear()
+            self._run_locks.clear()
+            self._rerun.clear()
             if self._dir:
                 for path in self._dir.glob("*.json"):
                     path.unlink()

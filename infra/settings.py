@@ -7,26 +7,74 @@ else in the codebase reads the environment.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+import secrets
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 
+def _env(name: str, default: str = "") -> str:
+    return os.getenv(name, default)
+
+
+def _flag(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in ("0", "false", "no", "")
+
+
 @dataclass(frozen=True)
 class Settings:
-    mode: str = os.getenv("FIELDPROOF_MODE", "local")
-    data_dir: Path = Path(os.getenv("FIELDPROOF_DATA_DIR", ".fieldproof-data"))
-    object_dir: Path = Path(os.getenv("FIELDPROOF_OBJECT_DIR", ".fieldproof-data/objects"))
-    aws_region: str = os.getenv("AWS_REGION", "us-east-1")
-    table_name: str = os.getenv("FIELDPROOF_TABLE_NAME", "fieldproof")
-    bucket_name: str = os.getenv("FIELDPROOF_BUCKET_NAME", "fieldproof-evidence")
-    event_bus: str = os.getenv("FIELDPROOF_EVENT_BUS", "fieldproof-bus")
-    bedrock_model_id: str = os.getenv(
-        "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    """Read from the environment when constructed, not when imported."""
+
+    mode: str = field(default_factory=lambda: _env("FIELDPROOF_MODE", "local"))
+    data_dir: Path = field(
+        default_factory=lambda: Path(_env("FIELDPROOF_DATA_DIR", ".fieldproof-data"))
     )
-    bedrock_region: str = os.getenv("BEDROCK_REGION", os.getenv("AWS_REGION", "us-east-1"))
-    stub_agents: bool = os.getenv("FIELDPROOF_STUB_AGENTS", "1") not in ("0", "false", "False")
+    object_dir: Path = field(
+        default_factory=lambda: Path(_env("FIELDPROOF_OBJECT_DIR", ".fieldproof-data/objects"))
+    )
+    aws_region: str = field(default_factory=lambda: _env("AWS_REGION", "us-east-1"))
+    table_name: str = field(default_factory=lambda: _env("FIELDPROOF_TABLE_NAME", "fieldproof"))
+    bucket_name: str = field(
+        default_factory=lambda: _env("FIELDPROOF_BUCKET_NAME", "fieldproof-evidence")
+    )
+    event_bus: str = field(default_factory=lambda: _env("FIELDPROOF_EVENT_BUS", "fieldproof-bus"))
+    bedrock_model_id: str = field(
+        default_factory=lambda: _env(
+            "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        )
+    )
+    bedrock_region: str = field(
+        default_factory=lambda: _env("BEDROCK_REGION", _env("AWS_REGION", "us-east-1"))
+    )
+    stub_agents: bool = field(default_factory=lambda: _flag("FIELDPROOF_STUB_AGENTS", True))
+
+    # -- API security (PRD 34) -------------------------------------------
+    api_key: str = field(default_factory=lambda: _env("FIELDPROOF_API_KEY"))
+    """When set, every /api route requires `Authorization: Bearer <key>`."""
+    signing_secret: str = field(
+        default_factory=lambda: _env("FIELDPROOF_SIGNING_SECRET") or secrets.token_hex(32)
+    )
+    """Signs local upload URLs. Random per process unless configured."""
+    max_upload_bytes: int = field(
+        default_factory=lambda: int(float(_env("FIELDPROOF_MAX_UPLOAD_MB", "20")) * 1024 * 1024)
+    )
+    upload_url_ttl_seconds: int = field(
+        default_factory=lambda: int(_env("FIELDPROOF_UPLOAD_URL_TTL", "900"))
+    )
+    public_base_url: str = field(
+        default_factory=lambda: _env("FIELDPROOF_PUBLIC_BASE_URL", "http://localhost:8000")
+    )
+    cors_origins: tuple[str, ...] = field(
+        default_factory=lambda: tuple(
+            o.strip()
+            for o in _env("FIELDPROOF_CORS_ORIGINS", "http://localhost:3000").split(",")
+            if o.strip()
+        )
+    )
 
     @property
     def is_local(self) -> bool:
@@ -45,7 +93,7 @@ _OVERRIDES: dict[str, Any] = {}
 
 
 def override(**adapters: Any) -> None:
-    """Substitute adapters for this process (store, object_store, event_bus, notifier)."""
+    """Substitute adapters: store, object_store, event_bus, notifier, invoice_provider."""
     _OVERRIDES.update({k: v for k, v in adapters.items() if v is not None})
 
 
@@ -121,6 +169,19 @@ def _build_notifier():
     return SimulatedNotifier()
 
 
+def get_invoice_provider():
+    if "invoice_provider" in _OVERRIDES:
+        return _OVERRIDES["invoice_provider"]
+    return _build_invoice_provider()
+
+
+@lru_cache(maxsize=1)
+def _build_invoice_provider():
+    from .adapters.invoicing import SimulatedInvoiceProvider
+
+    return SimulatedInvoiceProvider()
+
+
 def reset_caches() -> None:
     """Forget the wired singletons and any overrides."""
     clear_overrides()
@@ -130,5 +191,6 @@ def reset_caches() -> None:
         _build_object_store,
         _build_event_bus,
         _build_notifier,
+        _build_invoice_provider,
     ):
         fn.cache_clear()

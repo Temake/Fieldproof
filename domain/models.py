@@ -12,6 +12,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from .enums import (
+    UNRESOLVED_CONFLICT_STATES,
     ClaimStatus,
     ClaimType,
     ConflictSeverity,
@@ -201,6 +202,8 @@ class Event(Base):
     """Human-readable timeline line, e.g. 7 evidence artifacts processed."""
     actor: str = "fieldproof"
     idempotency_key: str | None = None
+    run_id: str | None = None
+    """Workflow run that produced this event (PRD 35 - observability)."""
     created_at: datetime = Field(default_factory=utcnow)
 
 
@@ -220,10 +223,23 @@ class JobState(Base):
         return [e for e in self.evidence if e.superseded_by is None]
 
     def open_conflicts(self) -> list[Conflict]:
+        """Conflicts the workflow can act on right now."""
         return [c for c in self.conflicts if c.status == ConflictStatus.OPEN]
 
+    def unresolved_conflicts(self) -> list[Conflict]:
+        """Open plus those parked on a clarification - neither is resolved."""
+        return [c for c in self.conflicts if c.status in UNRESOLVED_CONFLICT_STATES]
+
     def blocking_conflicts(self) -> list[Conflict]:
-        return [c for c in self.open_conflicts() if c.severity == ConflictSeverity.BLOCKING]
+        return [
+            c for c in self.unresolved_conflicts() if c.severity == ConflictSeverity.BLOCKING
+        ]
+
+    def conflict_by_id(self, conflict_id: str) -> Conflict | None:
+        return next((c for c in self.conflicts if c.id == conflict_id), None)
+
+    def decision_by_id(self, decision_id: str) -> Decision | None:
+        return next((d for d in self.decisions if d.id == decision_id), None)
 
     def pending_decisions(self) -> list[Decision]:
         return [d for d in self.decisions if d.status == DecisionStatus.PENDING]

@@ -43,7 +43,27 @@ class EvidenceIn(BaseModel):
     filename: str
     content_base64: str | None = None
     text: str | None = None
+    content_type: str | None = None
     uploaded_by: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class UploadUrlIn(BaseModel):
+    """PRD 34 - request a signed upload URL."""
+
+    filename: str
+    content_type: str | None = None
+
+
+class ConfirmUploadIn(BaseModel):
+    """Register bytes uploaded through a signed URL."""
+
+    key: str
+    type: EvidenceType
+    filename: str
+    uploaded_by: str
+    content_type: str | None = None
+    stage: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

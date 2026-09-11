@@ -106,15 +106,17 @@ def evaluate(conflict: Conflict, state: JobState) -> PolicyRule:
     """Return the governing rule, applying the small number of contextual carve-outs."""
     rule = rule_for(conflict)
 
-    if conflict.type == ConflictType.PRICE_MISMATCH:
-        if abs(conflict.financial_impact) <= PRICE_TOLERANCE:
-            return PolicyRule(
-                id=rule.id,
-                description=f"{rule.description} Difference is within the "
-                f"{PRICE_TOLERANCE:.2f} tolerance.",
-                outcome=PolicyOutcome.AUTO_RESOLVE,
-                severity=ConflictSeverity.INFO,
-            )
+    if (
+        conflict.type == ConflictType.PRICE_MISMATCH
+        and abs(conflict.financial_impact) <= PRICE_TOLERANCE
+    ):
+        return PolicyRule(
+            id=rule.id,
+            description=f"{rule.description} Difference is within the "
+            f"{PRICE_TOLERANCE:.2f} tolerance.",
+            outcome=PolicyOutcome.AUTO_RESOLVE,
+            severity=ConflictSeverity.INFO,
+        )
 
     if conflict.type in (
         ConflictType.QUANTITY_MISMATCH,

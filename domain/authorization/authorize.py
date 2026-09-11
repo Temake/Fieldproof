@@ -156,11 +156,22 @@ def _open_blocking_for(state: JobState, requirement_id: str) -> bool:
     Evidence recovery stays open as long as a blocking conflict names it.
     """
     return any(
-        c.requirement_id == requirement_id
-        and c.status == ConflictStatus.OPEN
-        and c.severity == ConflictSeverity.BLOCKING
-        for c in state.conflicts
+        c.requirement_id == requirement_id and c.severity == ConflictSeverity.BLOCKING
+        for c in state.unresolved_conflicts()
     )
+
+
+def _request_clarification(state: JobState, context: dict) -> Authorization:
+    """A clarification may only relay a question a supervisor actually asked."""
+    decision = state.decision_by_id(str(context.get("decision_id") or ""))
+    if decision is None:
+        return Authorization(False, "no decision referenced")
+    if decision.decision != DecisionAction.REQUEST_CLARIFICATION:
+        return Authorization(False, f"{decision.id} did not request clarification")
+    conflict = state.conflict_by_id(decision.conflict_id)
+    if conflict is None or conflict.status != ConflictStatus.AWAITING_CLARIFICATION:
+        return Authorization(False, f"{decision.conflict_id} is not awaiting clarification")
+    return ALLOW
 
 
 def _create_decision(state: JobState, context: dict) -> Authorization:
@@ -201,6 +212,7 @@ _CHECKS = {
     ActionType.CLOSE_JOB: _close_job,
     ActionType.INCREASE_INVOICE: _increase_invoice,
     ActionType.REQUEST_EVIDENCE: _request_evidence,
+    ActionType.REQUEST_CLARIFICATION: _request_clarification,
     ActionType.CREATE_DECISION: _create_decision,
     ActionType.CREATE_CONFLICT: _always,
     ActionType.CREATE_INVOICE: _create_invoice,

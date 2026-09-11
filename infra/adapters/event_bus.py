@@ -11,7 +11,7 @@ import logging
 import queue
 import threading
 from collections import defaultdict
-from typing import Callable
+from collections.abc import Callable
 
 from domain.models import Event
 
@@ -57,7 +57,7 @@ class InProcessEventBus:
         for handler in self._handlers.get(str(event.type), []):
             try:
                 handler(event)
-            except Exception:  # noqa: BLE001 - one bad handler must not kill the bus
+            except Exception:
                 log.exception("handler failed for %s on %s", event.type, event.job_id)
 
     def drain(self, timeout: float = 10.0) -> None:

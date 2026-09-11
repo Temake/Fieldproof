@@ -12,10 +12,19 @@ from typing import Any
 
 from domain.enums import ConflictType, JobStatus
 from domain.models import Conflict, JobState
-from tools.decisions import create_conflict, request_human_decision
+from tools.decisions import (
+    create_conflict,
+    request_human_decision,
+    request_technician_clarification,
+)
 from tools.evidence import request_technician_evidence
 from tools.jobs import close_job, set_job_status
-from tools.reports import generate_closeout_report, prepare_invoice
+from tools.reports import (
+    generate_closeout_report,
+    prepare_invoice,
+    seal_receipt,
+    send_customer_package,
+)
 
 SYSTEM_PROMPT = """You are the Action Agent for FieldProof.
 
@@ -26,10 +35,24 @@ around it. Never claim an action succeeded unless the tool said so.
 """
 
 
-def request_evidence(state: JobState, requirement_ids: list[str], message: str):
+def request_evidence(
+    state: JobState, requirement_ids: list[str], message: str, *, idempotency_key: str
+):
     """PRD FR-08 / G4 - recover missing information before escalating."""
     return request_technician_evidence(
-        state.job.id, requirement_ids=list(requirement_ids), message=message
+        state.job.id,
+        requirement_ids=list(requirement_ids),
+        message=message,
+        idempotency_key=idempotency_key,
+    )
+
+
+def clarify(state: JobState, decision, conflict):
+    """Relay a supervisor's REQUEST_CLARIFICATION to the technician."""
+    return request_technician_clarification(
+        state.job.id,
+        decision_id=decision.id,
+        message=message_for_clarification(state, decision, conflict),
     )
 
 
@@ -47,7 +70,7 @@ def open_conflict(state: JobState, conflict: Conflict):
     )
 
 
-def escalate(state: JobState, verdict, evidence_ids: list[str] | None = None):
+def escalate(state: JobState, verdict, evidence_ids: list[str], *, idempotency_key: str):
     """PRD FR-10 - create the decision a supervisor will act on."""
     return request_human_decision(
         state.job.id,
@@ -57,19 +80,49 @@ def escalate(state: JobState, verdict, evidence_ids: list[str] | None = None):
         policy=verdict.rule.description,
         policy_id=verdict.rule.id,
         financial_impact=verdict.financial_impact,
-        evidence_ids=evidence_ids or [],
+        evidence_ids=evidence_ids,
+        idempotency_key=idempotency_key,
     )
 
 
 def finalize(state: JobState) -> dict[str, Any]:
-    """PRD 12 scene 8 - report, invoice, close. Order matters for the timeline."""
-    results = {
-        "report": generate_closeout_report(state.job.id),
-        "invoice": prepare_invoice(state.job.id),
-    }
-    set_job_status(state.job.id, JobStatus.CLOSING)
-    results["close"] = close_job(state.job.id)
+    """PRD 12 scene 8 - report, invoice, customer package, close, receipt.
+
+    Stops at the first failure and leaves the job VERIFIED, so a retry resumes
+    from here rather than re-deciding anything (PRD 36: "Do not incorrectly
+    mark the entire job incomplete").
+    """
+    job_id = state.job.id
+    results: dict[str, Any] = {}
+
+    results["report"] = generate_closeout_report(job_id)
+    if not results["report"].ok:
+        return results
+
+    results["invoice"] = prepare_invoice(job_id)
+    if not results["invoice"].ok:
+        return results
+
+    # A customer notification failing is not a reason to hold the job open.
+    results["customer"] = send_customer_package(job_id)
+
+    set_job_status(job_id, JobStatus.CLOSING)
+    results["close"] = close_job(job_id)
+    if not results["close"].ok:
+        set_job_status(job_id, JobStatus.VERIFIED)
+        return results
+
+    results["receipt"] = seal_receipt(job_id)
     return results
+
+
+def message_for_clarification(state: JobState, decision, conflict) -> str:
+    name = state.job.technician_name or "there"
+    question = decision.comment or (conflict.description if conflict else decision.question)
+    return (
+        f"Hi {name}. Your supervisor has a question about Job {state.job.id}: {question} "
+        "Reply with a note or photo and I will pass it on."
+    )
 
 
 def message_for_missing(requirements, technician_name: str | None, conflicts=None) -> str:

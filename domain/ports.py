@@ -43,7 +43,7 @@ class JobStore(Protocol):
         self, job_id: str, claims: list[Claim], links: list[ClaimEvidenceLink]
     ) -> None: ...
 
-    def replace_conflicts(self, job_id: str, conflicts: list[Conflict]) -> None: ...
+    def set_conflicts(self, job_id: str, conflicts: list[Conflict]) -> None: ...
 
     def save_conflict(self, conflict: Conflict) -> Conflict: ...
 
@@ -57,14 +57,35 @@ class JobStore(Protocol):
 
     def list_events(self, job_id: str) -> list[Event]: ...
 
-    def claim_idempotency_key(self, key: str, result: Any = None) -> tuple[bool, Any]:
-        """Reserve an idempotency key (PRD 33).
+    def list_decisions(self, status: str | None = None) -> list[Decision]: ...
 
-        Returns (is_new, existing_result). Repeated calls return the result the
-        first call recorded, so duplicate delivery cannot duplicate a side
-        effect (INV-005).
+    # -- idempotency (PRD 33) ---------------------------------------------
+    def peek_idempotency(self, key: str) -> tuple[bool, Any]:
+        """(exists, recorded_result) without claiming."""
+        ...
+
+    def claim_idempotency_key(self, key: str, result: Any = None) -> tuple[bool, Any]:
+        """Atomically reserve a key. Returns (is_new, existing_result).
+
+        Repeated calls return the result the first call recorded, so duplicate
+        delivery cannot duplicate a side effect (INV-005).
         """
         ...
+
+    def record_idempotent_result(self, key: str, result: Any) -> None: ...
+
+    def release_idempotency_key(self, key: str) -> None:
+        """Forget a claim whose action failed, so a retry can run."""
+        ...
+
+    # -- workflow run lock (INV-006) --------------------------------------
+    def try_acquire_run_lock(self, job_id: str, owner: str, ttl_seconds: float = 300) -> bool: ...
+
+    def release_run_lock(self, job_id: str, owner: str) -> None: ...
+
+    def request_rerun(self, job_id: str) -> None: ...
+
+    def take_rerun(self, job_id: str) -> bool: ...
 
 
 @runtime_checkable
@@ -92,3 +113,10 @@ class Notifier(Protocol):
     """Technician / customer messaging. Simulated for the MVP (PRD 39)."""
 
     def send(self, recipient: str, message: str, **context: Any) -> str: ...
+
+
+@runtime_checkable
+class InvoiceProvider(Protocol):
+    """External invoicing. Simulated for the MVP (PRD FR-14, 39)."""
+
+    def submit(self, payload: dict[str, Any], idempotency_key: str) -> dict[str, Any]: ...

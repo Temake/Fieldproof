@@ -26,9 +26,10 @@ TRANSITIONS: dict[JobStatus, frozenset[JobStatus]] = {
     # (PRD FR-12 - workflow resumption).
     S.WAITING_FOR_EVIDENCE: frozenset({S.VERIFYING, S.FAILED}),
     S.WAITING_FOR_DECISION: frozenset({S.VERIFYING, S.FAILED}),
-    S.VERIFIED: frozenset({S.CLOSING, S.WAITING_FOR_DECISION, S.FAILED}),
+    # VERIFIED -> VERIFYING: late evidence or a retried closeout re-checks the job.
+    S.VERIFIED: frozenset({S.VERIFYING, S.CLOSING, S.WAITING_FOR_DECISION, S.FAILED}),
     # PRD 36 - a failed external action must not un-verify the job.
-    S.CLOSING: frozenset({S.CLOSED, S.VERIFIED, S.FAILED}),
+    S.CLOSING: frozenset({S.CLOSED, S.VERIFIED, S.VERIFYING, S.FAILED}),
     S.CLOSED: frozenset(),
     S.FAILED: frozenset({S.VERIFYING}),
 }

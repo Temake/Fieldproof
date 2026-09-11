@@ -7,10 +7,15 @@ the same key twice (INV-005, INV-006).
 
 from __future__ import annotations
 
+from contextvars import ContextVar
 from typing import Any
 
 from .enums import EventType
 from .models import Event
+
+#: The workflow run currently executing, if any. Every event created inside a
+#: run is stamped with it so a run can be reconstructed from events alone.
+current_run_id: ContextVar[str | None] = ContextVar("fieldproof_run_id", default=None)
 
 
 def make_event(
@@ -28,6 +33,7 @@ def make_event(
         message=message,
         actor=actor,
         idempotency_key=idempotency_key,
+        run_id=current_run_id.get(),
         payload=payload,
     )
 

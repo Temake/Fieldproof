@@ -7,7 +7,7 @@ inside a prompt.
 
 from __future__ import annotations
 
-from ..enums import ClaimType, EvidenceType, LinkRelationship
+from ..enums import ClaimType, LinkRelationship
 from ..models import Claim, ClaimEvidenceLink, Evidence
 from .compatibility import can_support, is_compatible
 

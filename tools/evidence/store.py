@@ -9,7 +9,19 @@ from domain.ids import utcnow
 from domain.models import Claim, ClaimEvidenceLink, Evidence
 from infra.adapters.object_store import sha256_hex
 from infra.settings import get_notifier, get_object_store, get_store
-from tools.base import ToolResult, fieldproof_tool
+from tools.base import fieldproof_tool
+
+#: Metadata keys the system owns. Uploaders may not set them (PRD 34 - sanitized input).
+RESERVED_METADATA = frozenset(
+    {"object_key", "size_bytes", "extraction_failed", "extraction_error", "receipt"}
+)
+
+
+def safe_filename(name: str | None) -> str:
+    """Strip paths and odd characters; artifact names end up in object keys."""
+    base = (name or "").replace("\\", "/").rsplit("/", 1)[-1].strip()
+    cleaned = "".join(ch if ch.isalnum() or ch in "._-" else "-" for ch in base).strip(".-")
+    return cleaned[:100] or "artifact"
 
 
 def upload_evidence(
@@ -23,18 +35,46 @@ def upload_evidence(
     metadata: dict[str, Any] | None = None,
 ) -> Evidence:
     """Persist an artifact with an immutable id, hash and storage URL (FR-02)."""
+    filename = safe_filename(filename)
     digest = sha256_hex(data)
     key = f"{job_id}/{digest[:12]}-{filename}"
     url = get_object_store().put(key, data, content_type)
+    return register_evidence(
+        job_id,
+        key=key,
+        storage_url=url,
+        data=data,
+        filename=filename,
+        evidence_type=evidence_type,
+        uploaded_by=uploaded_by,
+        content_type=content_type,
+        metadata=metadata,
+    )
+
+
+def register_evidence(
+    job_id: str,
+    *,
+    key: str,
+    storage_url: str,
+    data: bytes,
+    filename: str,
+    evidence_type: EvidenceType,
+    uploaded_by: str,
+    content_type: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> Evidence:
+    """Record bytes that are already in the object store (direct or signed upload)."""
+    clean = {k: v for k, v in (metadata or {}).items() if k not in RESERVED_METADATA}
     evidence = Evidence(
         job_id=job_id,
         type=evidence_type,
-        storage_url=url,
-        sha256=digest,
+        storage_url=storage_url,
+        sha256=sha256_hex(data),
         uploaded_by=uploaded_by,
-        filename=filename,
+        filename=safe_filename(filename),
         content_type=content_type,
-        metadata=metadata or {},
+        metadata={**clean, "object_key": key, "size_bytes": len(data)},
     )
     return get_store().add_evidence(evidence)
 
@@ -58,7 +98,13 @@ def get_evidence(job_id: str, evidence_id: str) -> dict[str, Any]:
     }
 
 
-def save_observations(job_id: str, evidence_id: str, observations, transcript=None) -> Evidence:
+def save_observations(
+    job_id: str,
+    evidence_id: str,
+    observations,
+    transcript: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> Evidence:
     """Record what the Evidence Agent extracted from one artifact (FR-03)."""
     store = get_store()
     state = store.get_state(job_id)
@@ -67,6 +113,7 @@ def save_observations(job_id: str, evidence_id: str, observations, transcript=No
         raise KeyError(evidence_id)
     evidence.observations = list(observations)
     evidence.transcript = transcript if transcript is not None else evidence.transcript
+    evidence.metadata = {**evidence.metadata, **(metadata or {})}
     evidence.processed_at = utcnow()
     return store.save_evidence(evidence)
 

@@ -103,9 +103,19 @@ class ConflictSeverity(StrEnum):
 
 class ConflictStatus(StrEnum):
     OPEN = "OPEN"
+    AWAITING_CLARIFICATION = "AWAITING_CLARIFICATION"
+    """A supervisor asked the technician a question; still unresolved."""
     AUTO_RESOLVED = "AUTO_RESOLVED"
     HUMAN_APPROVED = "HUMAN_APPROVED"
     HUMAN_REJECTED = "HUMAN_REJECTED"
+    CLEARED = "CLEARED"
+    """No longer detected - later evidence made the conflict disappear."""
+
+
+#: Conflicts in these states still stand between the job and CLOSED (INV-001).
+UNRESOLVED_CONFLICT_STATES = frozenset(
+    {ConflictStatus.OPEN, ConflictStatus.AWAITING_CLARIFICATION}
+)
 
 
 class PolicyOutcome(StrEnum):
@@ -135,6 +145,7 @@ class ActionType(StrEnum):
     """Side-effecting actions the Action Agent may propose (PRD 16, 24)."""
 
     REQUEST_EVIDENCE = "request_evidence"
+    REQUEST_CLARIFICATION = "request_clarification"
     CREATE_CONFLICT = "create_conflict"
     CREATE_DECISION = "create_decision"
     INCREASE_INVOICE = "increase_invoice"
@@ -167,7 +178,11 @@ class EventType(StrEnum):
     JOB_VERIFIED = "JOB_VERIFIED"
     JOB_CLOSED = "JOB_CLOSED"
     # Operational events - carry the timeline / observability surface (PRD 35).
+    JOB_STATUS_CHANGED = "JOB_STATUS_CHANGED"
     AGENT_STEP_STARTED = "AGENT_STEP_STARTED"
     AGENT_STEP_COMPLETED = "AGENT_STEP_COMPLETED"
     ACTION_EXECUTED = "ACTION_EXECUTED"
     ACTION_FAILED = "ACTION_FAILED"
+    WORKFLOW_RETRY_REQUESTED = "WORKFLOW_RETRY_REQUESTED"
+    WORKFLOW_RUN_COMPLETED = "WORKFLOW_RUN_COMPLETED"
+    WORKFLOW_RUN_FAILED = "WORKFLOW_RUN_FAILED"

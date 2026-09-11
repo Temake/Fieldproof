@@ -7,12 +7,17 @@ component the invariant tests target hardest.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from ..claims.compatibility import can_support
 from ..enums import (
+    UNRESOLVED_CONFLICT_STATES,
     ClaimType,
     ConflictSeverity,
+    ConflictStatus,
     ConflictType,
     EvidenceType,
     RequirementStatus,
@@ -92,7 +97,78 @@ def reconcile(state: JobState) -> ReconciliationResult:
 
     _price_conflicts(state, result.conflicts)
     result.conflicts.extend(detect_cross_cutting_conflicts(state, result))
+    result.conflicts = _with_stable_ids(result.conflicts)
     return result
+
+
+# -- conflict identity -------------------------------------------------------
+#
+# Reconciliation runs from scratch on every pass, so a conflict must be
+# recognisable as "the same problem" across passes. Otherwise a supervisor who
+# is mid-decision gets a second copy of the question the moment any new
+# evidence lands (INV-006), and an approval can silently transfer to a
+# different amount.
+#
+# The fingerprint therefore includes the observed and expected values: an
+# approval for 3-against-2 does not cover 4-against-2.
+
+
+def conflict_fingerprint(conflict: Conflict) -> str:
+    parts = {
+        "job": conflict.job_id,
+        "type": conflict.type.value,
+        "requirement": conflict.requirement_id,
+        "expected": conflict.expected_value,
+        "observed": conflict.observed_value,
+    }
+    if conflict.type == ConflictType.DUPLICATE_SUBMISSION:
+        parts["evidence"] = sorted(conflict.evidence_ids)
+    raw = json.dumps(parts, sort_keys=True, default=str)
+    return "CON-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:10].upper()
+
+
+def _with_stable_ids(conflicts: list[Conflict]) -> list[Conflict]:
+    seen: dict[str, Conflict] = {}
+    for conflict in conflicts:
+        conflict.id = conflict_fingerprint(conflict)
+        seen.setdefault(conflict.id, conflict)
+    return list(seen.values())
+
+
+def merge_conflicts(
+    existing: list[Conflict], fresh: list[Conflict], now: datetime
+) -> tuple[list[Conflict], list[str]]:
+    """Fold a fresh reconciliation pass into the stored conflict history.
+
+    - still detected and open        -> refreshed in place, same id
+    - still detected and decided     -> kept exactly as decided
+    - no longer detected, unresolved -> CLEARED (kept for the audit trail)
+    - newly detected                 -> added
+
+    Returns the merged list and the ids that were cleared on this pass.
+    """
+    fresh_by_id = {c.id: c for c in fresh}
+    merged: list[Conflict] = []
+    cleared: list[str] = []
+
+    for old in existing:
+        new = fresh_by_id.pop(old.id, None)
+        if new is None:
+            if old.status in UNRESOLVED_CONFLICT_STATES:
+                old = old.model_copy(
+                    update={"status": ConflictStatus.CLEARED, "resolved_at": now}
+                )
+                cleared.append(old.id)
+            merged.append(old)
+        elif old.status == ConflictStatus.OPEN:
+            merged.append(
+                new.model_copy(update={"created_at": old.created_at, "policy_id": old.policy_id})
+            )
+        else:
+            merged.append(old)
+
+    merged.extend(fresh_by_id.values())
+    return merged, cleared
 
 
 def _price_conflicts(state: JobState, conflicts: list[Conflict]) -> None:
@@ -160,7 +236,8 @@ def _evaluate_requirement(
             return conflicts
 
         observations = [o for a in artifacts for o in a.observations]
-        confidence = max((o.confidence for o in observations), default=0.95)
+        # Fail closed: an artifact nobody could read does not satisfy anything.
+        confidence = max((o.confidence for o in observations), default=0.0)
         result.confidence_by_requirement[requirement.id] = confidence
         if not may_auto_verify(confidence):
             requirement.status = RequirementStatus.PARTIAL

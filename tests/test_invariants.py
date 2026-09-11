@@ -6,8 +6,6 @@ optimization; if one of these fails, the product is unsafe to ship.
 
 from __future__ import annotations
 
-import pytest
-
 from domain.authorization import authorize
 from domain.claims.compatibility import can_support, is_compatible
 from domain.enums import (
@@ -21,7 +19,7 @@ from domain.enums import (
     JobStatus,
     RequirementStatus,
 )
-from domain.models import Claim, Conflict, Evidence, Job, JobState, Requirement, Observation
+from domain.models import Claim, Conflict, Evidence, Job, JobState, Requirement
 from domain.reconciliation.engine import reconcile
 
 
@@ -173,7 +171,7 @@ def test_inv_006_paused_workflow_resumes_exactly_once(store, hero_job):
     assert second.duplicate
 
     state = store.get_state(hero_job.job_id)
-    resolved = [d for d in state.decisions if d.id == decision_id][0]
+    resolved = next(d for d in state.decisions if d.id == decision_id)
     assert resolved.decision == DecisionAction.APPROVE
 
 

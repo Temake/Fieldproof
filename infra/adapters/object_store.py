@@ -63,6 +63,22 @@ class S3ObjectStore:
     def get(self, key: str) -> bytes:
         return self.client.get_object(Bucket=self.bucket, Key=self._key(key))["Body"].read()
 
+    def exists(self, key: str) -> bool:
+        from botocore.exceptions import ClientError
+
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=self._key(key))
+            return True
+        except ClientError:
+            return False
+
+    def presigned_put(self, key: str, content_type: str | None, expires_in: int = 900) -> str:
+        """PRD 34 - the browser uploads straight to S3; the API never proxies bytes."""
+        params = {"Bucket": self.bucket, "Key": self._key(key)}
+        if content_type:
+            params["ContentType"] = content_type
+        return self.client.generate_presigned_url("put_object", Params=params, ExpiresIn=expires_in)
+
     def signed_url(self, key: str, expires_in: int = 900) -> str:
         """PRD 34 - evidence is reached through short-lived signed URLs."""
         return self.client.generate_presigned_url(

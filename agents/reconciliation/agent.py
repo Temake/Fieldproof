@@ -10,6 +10,8 @@ decision card and the receipt - it cannot change a status.
 
 from __future__ import annotations
 
+from pydantic import BaseModel, Field
+
 from domain.models import JobState
 from domain.reconciliation.engine import ReconciliationResult, reconcile
 
@@ -29,13 +31,29 @@ def run(state: JobState) -> ReconciliationResult:
     return reconcile(state)
 
 
-def explain(state: JobState, result: ReconciliationResult) -> str:
-    """Narrative summary of a reconciliation result."""
-    from agents.runtime import stub_mode
+class Summary(BaseModel):
+    summary: str = Field(description="One short paragraph for a supervisor")
 
+
+def explain(state: JobState, result: ReconciliationResult) -> str:
+    """Narrative summary of a reconciliation result. Template if the model is unavailable."""
+    from agents.runtime import build_agent, stub_mode
+
+    fallback = _explain_stub(result)
     if stub_mode():
-        return _explain_stub(result)
-    raise NotImplementedError("Bedrock path not wired yet - run with FIELDPROOF_STUB_AGENTS=1")
+        return fallback
+    facts = "\n".join(
+        f"- {r.description}: {r.status.value}" + (f" ({r.notes})" if r.notes else "")
+        for r in result.requirements
+    ) + "\n" + "\n".join(f"- conflict: {c.description}" for c in result.conflicts)
+    try:
+        out = build_agent("reconciliation", SYSTEM_PROMPT)(
+            f"Job {state.job.id}: {state.job.description}\n{facts}",
+            structured_output_model=Summary,
+        )
+        return out.structured_output.summary.strip() or fallback
+    except Exception:  # noqa: BLE001 - a summary is never worth failing a run
+        return fallback
 
 
 def _explain_stub(result: ReconciliationResult) -> str:

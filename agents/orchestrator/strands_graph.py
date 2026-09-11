@@ -14,11 +14,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from agents.action.agent import SYSTEM_PROMPT as ACTION_PROMPT
 from agents.context.agent import SYSTEM_PROMPT as CONTEXT_PROMPT
 from agents.evidence.agent import SYSTEM_PROMPT as EVIDENCE_PROMPT
 from agents.policy.agent import SYSTEM_PROMPT as POLICY_PROMPT
 from agents.reconciliation.agent import SYSTEM_PROMPT as RECONCILE_PROMPT
-from agents.action.agent import SYSTEM_PROMPT as ACTION_PROMPT
 from agents.runtime import build_agent
 
 #: Guard against runaway loops when evidence keeps arriving (PRD 17 cycle).

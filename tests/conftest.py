@@ -18,8 +18,9 @@ os.environ["FIELDPROOF_DATA_DIR"] = ""
 @pytest.fixture(autouse=True)
 def isolated_runtime(tmp_path):
     """Swap in clean adapters for the duration of one test."""
-    import infra.settings as settings
+    from infra import settings
     from infra.adapters.event_bus import InProcessEventBus
+    from infra.adapters.invoicing import SimulatedInvoiceProvider
     from infra.adapters.memory_store import MemoryJobStore
     from infra.adapters.notifier import SimulatedNotifier
     from infra.adapters.object_store import LocalObjectStore
@@ -31,6 +32,7 @@ def isolated_runtime(tmp_path):
         event_bus=InProcessEventBus(synchronous=True),
         object_store=LocalObjectStore(tmp_path / "objects"),
         notifier=SimulatedNotifier(),
+        invoice_provider=SimulatedInvoiceProvider(),
     )
     yield store
     settings.clear_overrides()
@@ -56,3 +58,17 @@ def hero_job():
     fixture = load_fixture("JOB-1842")
     create_job(fixture)
     return fixture
+
+
+@pytest.fixture
+def env(monkeypatch):
+    """Set environment variables for one test and rebuild settings around them."""
+    from infra.settings import get_settings
+
+    def set_env(**values):
+        for name, value in values.items():
+            monkeypatch.setenv(name, value)
+        get_settings.cache_clear()
+
+    yield set_env
+    get_settings.cache_clear()

@@ -11,13 +11,14 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from agents.orchestrator import register
 from infra.settings import get_settings
 
 from .routers import decisions, evidence, jobs, ops
+from .security import require_api_key
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,7 +28,10 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    register()
+    # Local mode runs the workflow on the in-process bus. On AWS the
+    # EventBridge rule is the subscription (see infra/aws/template.yaml).
+    if get_settings().is_local:
+        register()
     logging.getLogger("fieldproof").info(
         "FieldProof API up in %s mode (stub_agents=%s)",
         get_settings().mode,
@@ -45,16 +49,20 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=list(get_settings().cors_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(jobs.router)
-app.include_router(decisions.router)
-app.include_router(evidence.router)
-app.include_router(ops.router)
+# PRD 34 - server-side authorization on every API route. The signed upload
+# route is the one exception: its token is its credential.
+secured = [Depends(require_api_key)]
+app.include_router(jobs.router, dependencies=secured)
+app.include_router(decisions.router, dependencies=secured)
+app.include_router(evidence.router, dependencies=secured)
+app.include_router(ops.router, dependencies=secured)
+app.include_router(evidence.uploads_router)
 
 
 @app.get("/health")

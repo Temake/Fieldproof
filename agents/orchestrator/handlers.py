@@ -22,14 +22,15 @@ TRIGGERS = (
     EventType.JOB_COMPLETED,
     EventType.EVIDENCE_UPLOADED,
     EventType.DECISION_RESOLVED,
+    EventType.WORKFLOW_RETRY_REQUESTED,
 )
 
 
 def on_trigger(event: Event) -> None:
     log.info("workflow triggered by %s on %s", event.type, event.job_id)
     try:
-        run_workflow(event.job_id)
-    except Exception:  # noqa: BLE001 - PRD 36, a failed run must not lose the job
+        run_workflow(event.job_id, trigger=f"{event.type}:{event.id}")
+    except Exception:
         log.exception("workflow run failed for %s", event.job_id)
 
 

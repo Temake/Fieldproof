@@ -19,9 +19,40 @@ from infra.settings import get_store
 from tools.base import ToolResult, fieldproof_tool
 
 
-def sync_conflicts(job_id: str, conflicts: list[Conflict]) -> None:
-    """Replace the open conflict set after a reconciliation pass."""
-    get_store().replace_conflicts(job_id, conflicts)
+def sync_conflicts(job_id: str, fresh: list[Conflict]) -> list[str]:
+    """Fold a reconciliation pass into the conflict history.
+
+    Conflicts that disappeared are CLEARED, and any decision still pending on
+    one of them is withdrawn - a supervisor should never be asked about a
+    problem that no longer exists. Returns the cleared conflict ids.
+    """
+    from domain.events import make_event
+    from domain.reconciliation.engine import merge_conflicts
+    from infra.settings import get_event_bus
+
+    store = get_store()
+    state = store.get_state(job_id)
+    merged, cleared = merge_conflicts(state.conflicts, fresh, utcnow())
+    store.set_conflicts(job_id, merged)
+
+    for decision in state.pending_decisions():
+        if decision.conflict_id not in cleared:
+            continue
+        decision.status = DecisionStatus.EXPIRED
+        decision.resolved_at = utcnow()
+        store.save_decision(decision)
+        event = store.append_event(
+            make_event(
+                job_id,
+                EventType.DECISION_RESOLVED,
+                message=f"Decision withdrawn: new evidence cleared {decision.conflict_id}",
+                decision_id=decision.id,
+                conflict_id=decision.conflict_id,
+                decision="EXPIRED",
+            )
+        )
+        get_event_bus().publish(event)
+    return cleared
 
 
 @fieldproof_tool(ActionType.CREATE_CONFLICT, EventType.CONFLICT_DETECTED)
@@ -144,16 +175,20 @@ def resolve_decision(
     store.save_decision(decision)
 
     state = store.get_state(decision.job_id)
-    for conflict in state.conflicts:
-        if conflict.id != decision.conflict_id:
-            continue
-        conflict.status = (
-            ConflictStatus.HUMAN_APPROVED
-            if action == DecisionAction.APPROVE
-            else ConflictStatus.HUMAN_REJECTED
-        )
-        conflict.resolved_at = utcnow()
+    conflict = state.conflict_by_id(decision.conflict_id)
+    if conflict is not None:
         conflict.resolution_decision_id = decision.id
+        if action == DecisionAction.REQUEST_CLARIFICATION:
+            # Not a resolution: the question goes to the technician and the
+            # conflict keeps blocking closeout until someone decides (INV-001).
+            conflict.status = ConflictStatus.AWAITING_CLARIFICATION
+        else:
+            conflict.status = (
+                ConflictStatus.HUMAN_APPROVED
+                if action == DecisionAction.APPROVE
+                else ConflictStatus.HUMAN_REJECTED
+            )
+            conflict.resolved_at = utcnow()
         store.save_conflict(conflict)
 
     data = {
@@ -165,11 +200,16 @@ def resolve_decision(
     }
     store.record_idempotent_result(key, data)
 
+    verb = {
+        DecisionAction.APPROVE: "Approved",
+        DecisionAction.REJECT: "Rejected",
+        DecisionAction.REQUEST_CLARIFICATION: "Clarification requested",
+    }[action]
     event = store.append_event(
         make_event(
             decision.job_id,
             EventType.DECISION_RESOLVED,
-            message=f"{action.value.title()} by {decided_by}",
+            message=f"{verb} by {decided_by}",
             actor=decided_by,
             idempotency_key=key,
             **data,
@@ -181,5 +221,28 @@ def resolve_decision(
         action="resolve_decision",
         job_id=decision.job_id,
         data=data,
-        message=f"{action.value.title()} by {decided_by}",
+        message=f"{verb} by {decided_by}",
+    )
+
+
+@fieldproof_tool(ActionType.REQUEST_CLARIFICATION, EventType.EVIDENCE_REQUESTED)
+def request_technician_clarification(
+    state, *, decision_id: str, message: str, **_: Any
+) -> tuple[dict[str, Any], str]:
+    """Relay a supervisor's question to the technician (PRD FR-11).
+
+    Idempotent per decision, so a re-run while waiting never re-sends it.
+    """
+    from infra.settings import get_notifier
+
+    recipient = state.job.technician_id
+    message_id = get_notifier().send(recipient, message, job_id=state.job.id)
+    return (
+        {
+            "decision_id": decision_id,
+            "recipient": recipient,
+            "message": message,
+            "message_id": message_id,
+        },
+        f"Technician asked for clarification: {message}",
     )

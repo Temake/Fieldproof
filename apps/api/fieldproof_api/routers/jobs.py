@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import base64
-
 from fastapi import APIRouter, HTTPException
 
 from domain.enums import EventType, JobStatus
 from domain.events import make_event
 from domain.ids import JOB, new_id, utcnow
 from domain.models import Job, Requirement
-from tools.evidence import upload_evidence
 from tools.jobs import set_job_status
 
 from ..deps import get_event_bus, get_store, load_state
-from ..schemas import EvidenceIn, JobIn
+from ..schemas import JobIn
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -24,6 +21,8 @@ def create_job(payload: JobIn):
     """PRD FR-01 - accept a structured work-order definition."""
     store = get_store()
     job_id = payload.id or new_id(JOB)
+    if any(j.id == job_id for j in store.list_jobs()):
+        raise HTTPException(409, f"job {job_id} already exists")
     job = Job(
         id=job_id,
         customer_id=payload.customer_id,
@@ -69,7 +68,7 @@ def complete_job(job_id: str):
 
     store = get_store()
     store.save_job(state.job.model_copy(update={"completed_at": utcnow()}))
-    set_job_status(job_id, JobStatus.SUBMITTED, message="Technician completed job")
+    set_job_status(job_id, JobStatus.SUBMITTED)
 
     event = store.append_event(
         make_event(
@@ -83,37 +82,20 @@ def complete_job(job_id: str):
     return {"job_id": job_id, "status": JobStatus.SUBMITTED.value, "accepted": True}
 
 
-@router.post("/{job_id}/evidence")
-def add_evidence(job_id: str, payload: EvidenceIn):
-    """PRD FR-02 - upload an artifact and let the workflow re-enter."""
-    load_state(job_id)
-    if payload.content_base64:
-        data = base64.b64decode(payload.content_base64)
-    elif payload.text is not None:
-        data = payload.text.encode("utf-8")
-    else:
-        raise HTTPException(400, "provide content_base64 or text")
+@router.post("/{job_id}/retry", status_code=202)
+def retry(job_id: str):
+    """Re-run the workflow after a failure (PRD 36), e.g. an invoice provider outage."""
+    from agents.orchestrator.graph import RUNNABLE
 
-    evidence = upload_evidence(
-        job_id,
-        filename=payload.filename,
-        data=data,
-        evidence_type=payload.type,
-        uploaded_by=payload.uploaded_by,
-        metadata=payload.metadata,
-    )
+    state = load_state(job_id)
+    if state.job.status not in RUNNABLE:
+        raise HTTPException(409, f"job is {state.job.status.value}; nothing to retry")
     store = get_store()
     event = store.append_event(
-        make_event(
-            job_id,
-            EventType.EVIDENCE_UPLOADED,
-            message=f"New {payload.type.value} received",
-            actor=payload.uploaded_by,
-            evidence_id=evidence.id,
-        )
+        make_event(job_id, EventType.WORKFLOW_RETRY_REQUESTED, actor="supervisor")
     )
     get_event_bus().publish(event)
-    return evidence
+    return {"job_id": job_id, "accepted": True}
 
 
 @router.get("/{job_id}/events")
@@ -123,13 +105,51 @@ def get_timeline(job_id: str):
     return sorted(state.events, key=lambda e: e.created_at)
 
 
+@router.get("/{job_id}/runs")
+def get_runs(job_id: str):
+    """PRD 35 - every workflow run: id, trigger, steps, tools, duration, outcome, error."""
+    state = load_state(job_id)
+    runs = [
+        {"type": e.type.value, "created_at": e.created_at, **e.payload}
+        for e in state.events
+        if e.type in (EventType.WORKFLOW_RUN_COMPLETED, EventType.WORKFLOW_RUN_FAILED)
+    ]
+    return sorted(runs, key=lambda r: r["created_at"])
+
+
+@router.get("/{job_id}/messages")
+def get_messages(job_id: str):
+    """What FieldProof sent to the technician and customer (simulated delivery)."""
+    from infra.settings import get_notifier
+
+    load_state(job_id)
+    notifier = get_notifier()
+    sent = notifier.for_job(job_id) if hasattr(notifier, "for_job") else []
+    return [{"id": m.id, "recipient": m.recipient, "message": m.message} for m in sent]
+
+
 @router.get("/{job_id}/receipt")
 def get_receipt(job_id: str):
-    """PRD FR-15 - the final proof page."""
+    """PRD FR-15 - the final proof page. Sealed at close; provisional before."""
     from tools.reports import generate_evidence_receipt
 
     load_state(job_id)
     return generate_evidence_receipt(job_id)
+
+
+@router.get("/{job_id}/receipt/verify")
+def verify(job_id: str):
+    """PRD 29 - recompute the receipt hash to show it has not been altered."""
+    from tools.reports import generate_evidence_receipt, verify_receipt
+
+    load_state(job_id)
+    receipt = generate_evidence_receipt(job_id)
+    return {
+        "receipt_id": receipt["receipt_id"],
+        "sealed": not receipt.get("provisional", True),
+        "sha256": receipt["sha256"],
+        "valid": verify_receipt(receipt),
+    }
 
 
 @router.get("/{job_id}/graph")

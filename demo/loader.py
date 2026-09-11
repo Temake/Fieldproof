@@ -85,7 +85,7 @@ def submit_evidence(job_id: str, items: list[dict[str, Any]], *, announce: bool 
 
 def complete_job(job_id: str) -> None:
     """The technician clicks Complete Job (PRD 10)."""
-    set_job_status(job_id, JobStatus.SUBMITTED, message="Technician completed job")
+    set_job_status(job_id, JobStatus.SUBMITTED)
     _publish(job_id, EventType.JOB_COMPLETED, "Technician completed job")
 
 

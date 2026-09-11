@@ -3,80 +3,116 @@
 Turns unstructured artifacts into structured observations. This is the only
 agent that touches a multimodal model.
 
-Tools: read_image, transcribe_audio, extract_receipt, read_document,
-calculate_hash.
+Dispatch is deterministic - the artifact type picks the tool, not the model.
+The agent output is deliberately narrow: observations with a confidence value.
+Claims are built afterwards in domain/claims/normalize.py, so a hallucinated
+claim type cannot reach the reconciliation engine.
 
-The agent output is deliberately narrow - observations with a confidence value
-and nothing else. Claim construction happens in deterministic code
-(domain/claims/normalize.py), so a hallucinated claim type cannot reach the
-reconciliation engine.
+Failure handling follows PRD 36:
+
+    retry            (inside each tool call)
+    alternate parse  (a second tool that can read the same bytes)
+    human fallback   (an 'unreadable' observation at confidence 0.0, which
+                      reconciliation turns into a request for a better artifact)
+
+An artifact that could not be read must never count as present.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+import logging
+from collections.abc import Callable
+from typing import Any
 
-from domain.models import Evidence, Observation
 from agents.runtime import stub_mode
+from domain.enums import EvidenceType
+from domain.models import Evidence, JobState, Observation
 
-SYSTEM_PROMPT = """You are the Evidence Agent for FieldProof.
+from . import tools
+from .tools import EVIDENCE_SYSTEM_PROMPT as SYSTEM_PROMPT  # noqa: F401 - re-exported
+from .tools import Reading
 
-You examine one artifact from a completed field-service job and report only
-what you can actually see or hear in it.
+log = logging.getLogger("fieldproof.evidence")
 
-Rules:
-- Report observations, never conclusions about whether the job is complete.
-- Every observation carries a confidence between 0 and 1. Be honest: a blurry
-  or partial image is low confidence, and low confidence is useful information.
-- Count only what is distinctly visible. Two photos of the same unit are one
-  unit, not two.
-- A receipt tells you what was PURCHASED. It never tells you what was
-  INSTALLED. Never report an installation from a receipt.
-- If you cannot tell, say so with a low confidence rather than guessing.
+Tool = Callable[[Evidence, bytes, dict[str, Any]], Reading]
 
-Valid observation types:
-  installed_component, purchased_line_item, signature_present, site_photo,
-  amount_paid, spoken_statement, task_completed
-"""
-
-
-class ObservationOut(BaseModel):
-    """Structured output schema the model must fill (PRD FR-03)."""
-
-    type: str = Field(description="One of the valid observation types")
-    confidence: float = Field(ge=0.0, le=1.0, description="How certain you are")
-    component: str | None = Field(default=None, description="Part number or component name")
-    quantity: int | None = Field(default=None, description="Distinctly visible count")
-    detail: str | None = Field(default=None, description="What in the artifact supports this")
+#: Primary tool, then the alternate that can read the same bytes another way.
+DISPATCH: dict[EvidenceType, tuple[Tool, ...]] = {
+    EvidenceType.IMAGE: (tools.read_image,),
+    EvidenceType.SIGNATURE: (tools.read_image, tools.read_document),
+    EvidenceType.RECEIPT: (tools.extract_receipt, tools.read_document),
+    EvidenceType.PDF: (tools.read_document,),
+    EvidenceType.CHECKLIST: (tools.read_document,),
+    EvidenceType.VOICE_NOTE: (tools.transcribe_audio,),
+}
 
 
-class EvidenceReading(BaseModel):
-    observations: list[ObservationOut] = Field(default_factory=list)
-    transcript: str | None = Field(default=None, description="Text or speech content, if any")
-
-
-def analyze(evidence: Evidence, blob: bytes | None = None) -> tuple[list[Observation], str | None]:
-    """Extract observations from one artifact.
-
-    In stub mode this defers to the deterministic extractors so the workflow,
-    the tests and the demo all run without Bedrock.
-    """
+def analyze(evidence: Evidence, state: JobState | None = None) -> Reading:
+    """Extract observations from one artifact."""
     if stub_mode():
         from .extractors import extract_stub
 
-        return extract_stub(evidence)
-    return _analyze_with_model(evidence, blob)
+        observations, transcript = extract_stub(evidence)
+        return Reading(observations=observations, transcript=transcript)
+
+    try:
+        blob = _load(evidence)
+    except Exception as exc:  # noqa: BLE001
+        return unreadable(evidence, f"could not load artifact: {exc}")
+
+    if tools.calculate_hash(blob) != evidence.sha256:
+        # The bytes changed after upload. Nothing read from them can be trusted.
+        return unreadable(evidence, "content hash does not match the uploaded artifact")
+
+    if evidence.type == EvidenceType.SENSOR_READING:
+        return _sensor_reading(evidence, blob)
+
+    context = job_context(state)
+    errors: list[str] = []
+    for tool in DISPATCH.get(evidence.type, ()):
+        try:
+            return tool(evidence, blob, context)
+        except Exception as exc:  # noqa: BLE001 - fall through to the alternate
+            log.warning("%s could not read %s: %s", tool.__name__, evidence.id, exc)
+            errors.append(f"{tool.__name__}: {exc}")
+    return unreadable(evidence, "; ".join(errors) or f"no reader for {evidence.type.value}")
 
 
-def _analyze_with_model(evidence: Evidence, blob: bytes | None):
-    """TODO: build the multimodal prompt and call the Evidence Agent.
+def unreadable(evidence: Evidence, reason: str) -> Reading:
+    """Human fallback. Confidence 0.0 guarantees a request, never a verification."""
+    log.warning("evidence %s unreadable: %s", evidence.id, reason)
+    return Reading(
+        observations=[Observation(type="unreadable", confidence=0.0, detail=reason)],
+        metadata={"extraction_failed": True, "extraction_error": reason},
+    )
 
-    Shape:
-        agent = build_agent("evidence", SYSTEM_PROMPT, tools=EVIDENCE_TOOLS)
-        result = agent(
-            [{"text": ...}, {"image": {"format": "png", "source": {"bytes": blob}}}],
-            structured_output_model=EvidenceReading,
-        )
-        reading = result.structured_output
-    """
-    raise NotImplementedError("Bedrock path not wired yet - run with FIELDPROOF_STUB_AGENTS=1")
+
+def job_context(state: JobState | None) -> dict[str, Any]:
+    """The little the model needs to know: what job, which parts to look for."""
+    if state is None:
+        return {}
+    return {
+        "description": state.job.description,
+        "parts": sorted({r.part_number for r in state.requirements if r.part_number}),
+    }
+
+
+def _load(evidence: Evidence) -> bytes:
+    from infra.settings import get_object_store
+
+    key = evidence.metadata.get("object_key")
+    if not key:
+        raise ValueError("artifact has no object key")
+    return get_object_store().get(key)
+
+
+def _sensor_reading(evidence: Evidence, blob: bytes) -> Reading:
+    """Sensor payloads are already structured; no model needed."""
+    import json
+
+    try:
+        data = json.loads(blob)
+    except ValueError as exc:
+        return unreadable(evidence, f"sensor payload is not JSON: {exc}")
+    observations = [Observation(**o) for o in data.get("observations", [])]
+    return Reading(observations=observations, metadata={"sensor": data.get("sensor")})

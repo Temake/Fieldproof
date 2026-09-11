@@ -8,7 +8,7 @@ reference by eye (PRD 29).
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 JOB = "JOB"
 REQ = "REQ"
@@ -30,7 +30,7 @@ def receipt_id_for(job_id: str) -> str:
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def utcnow_iso() -> str:

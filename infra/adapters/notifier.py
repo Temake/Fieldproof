@@ -34,3 +34,6 @@ class SimulatedNotifier:
 
     def for_recipient(self, recipient: str) -> list[SentMessage]:
         return [m for m in self.sent if m.recipient == recipient]
+
+    def for_job(self, job_id: str) -> list[SentMessage]:
+        return [m for m in self.sent if m.context.get("job_id") == job_id]
