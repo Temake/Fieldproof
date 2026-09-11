@@ -1,21 +1,428 @@
 @import "tailwindcss";
 
-@theme {
-  --color-ink: #0d1117;
-  --color-panel: #ffffff;
-  --color-muted: #5b6472;
-  --color-line: #e3e7ee;
-  --color-verified: #0e7c4a;
-  --color-waiting: #b45309;
-  --color-blocking: #b42318;
-  --color-agent: #2563eb;
-}
+/*
+ * FieldProof design tokens.
+ *
+ * Colour carries meaning, so it is rationed:
+ *   accent    FieldProof itself is acting (agent steps, primary actions)
+ *   verified  proven, closed, approved
+ *   waiting   blocked on the technician
+ *   blocking  blocked on a supervisor, or something failed
+ * Everything else is neutral ink on paper.
+ *
+ * Shape system: controls (buttons, inputs) use --radius-control, surfaces use
+ * --radius-panel, status badges are full pills. Nothing else.
+ *
+ * Z-index scale (the only values in use): nav 30, toasts 50. Dialogs use the
+ * native top layer and need none.
+ */
 
 :root {
   color-scheme: light;
+
+  --canvas: #f1f2f4;
+  --surface: #fbfbfc;
+  --surface-sunken: #e9ebef;
+  --ink: #0e1116;
+  --ink-2: #353b45;
+  --muted: #5a616d;
+  --faint: #9197a2;
+  --line: #dde0e6;
+  --line-strong: #c4c9d2;
+
+  --accent: #2b3fd6;
+  --accent-hover: #2233b8;
+  --accent-soft: #e7eafc;
+  --accent-line: #c3cbf6;
+  --accent-ink: #2233b8;
+  --on-accent: #fbfbfc;
+
+  --verified: #0b7a4b;
+  --verified-hover: #09653e;
+  --verified-soft: #e1f2e9;
+  --verified-line: #b5dcc7;
+  --verified-ink: #09623c;
+  --on-verified: #fbfbfc;
+
+  --waiting: #a15c00;
+  --waiting-soft: #fbefd9;
+  --waiting-line: #efd2a0;
+  --waiting-ink: #7f4900;
+
+  --blocking: #b8281b;
+  --blocking-soft: #fce8e5;
+  --blocking-line: #f3c1bb;
+  --blocking-ink: #9c2016;
+
+  --neutral-soft: #eceef1;
+  --neutral-line: #d6dae0;
+  --neutral-ink: #474e59;
+
+  --shadow-rgb: 22 28 45;
 }
 
-body {
-  background: #f6f7f9;
-  color: var(--color-ink);
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --canvas: #0b0d11;
+    --surface: #13161c;
+    --surface-sunken: #0f1216;
+    --ink: #eceef2;
+    --ink-2: #c2c7d0;
+    --muted: #939aa6;
+    --faint: #5d6470;
+    --line: #242832;
+    --line-strong: #353b47;
+
+    --accent: #7383ff;
+    --accent-hover: #8c99ff;
+    --accent-soft: #1a1f4a;
+    --accent-line: #2d3680;
+    --accent-ink: #aeb8ff;
+    --on-accent: #0b0d11;
+
+    --verified: #34c983;
+    --verified-hover: #52d697;
+    --verified-soft: #0e261a;
+    --verified-line: #1b4a33;
+    --verified-ink: #74e2ab;
+    --on-verified: #0b0d11;
+
+    --waiting: #e7a53a;
+    --waiting-soft: #2a1f0c;
+    --waiting-line: #55401a;
+    --waiting-ink: #f3c577;
+
+    --blocking: #ff6b5c;
+    --blocking-soft: #32140f;
+    --blocking-line: #65261d;
+    --blocking-ink: #ff9d92;
+
+    --neutral-soft: #1b1f27;
+    --neutral-line: #2c313c;
+    --neutral-ink: #b6bcc7;
+
+    --shadow-rgb: 0 0 0;
+  }
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunken: var(--surface-sunken);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+
+  --color-verified: var(--verified);
+  --color-verified-hover: var(--verified-hover);
+  --color-verified-soft: var(--verified-soft);
+  --color-verified-line: var(--verified-line);
+  --color-verified-ink: var(--verified-ink);
+  --color-on-verified: var(--on-verified);
+
+  --color-waiting: var(--waiting);
+  --color-waiting-soft: var(--waiting-soft);
+  --color-waiting-line: var(--waiting-line);
+  --color-waiting-ink: var(--waiting-ink);
+
+  --color-blocking: var(--blocking);
+  --color-blocking-soft: var(--blocking-soft);
+  --color-blocking-line: var(--blocking-line);
+  --color-blocking-ink: var(--blocking-ink);
+
+  --color-neutral-soft: var(--neutral-soft);
+  --color-neutral-line: var(--neutral-line);
+  --color-neutral-ink: var(--neutral-ink);
+
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", monospace;
+
+  --radius-control: 10px;
+  --radius-panel: 16px;
+
+  --ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+
+  --shadow-raised: 0 1px 2px rgb(var(--shadow-rgb) / 0.06), 0 8px 24px -12px rgb(var(--shadow-rgb) / 0.18);
+  --shadow-float: 0 2px 6px rgb(var(--shadow-rgb) / 0.08), 0 24px 48px -20px rgb(var(--shadow-rgb) / 0.32);
+}
+
+/* -- Type scale ---------------------------------------------------------- */
+
+@utility text-display {
+  font-size: clamp(2.5rem, 1.55rem + 3.4vw, 4.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 760;
+  font-stretch: 86%;
+}
+
+@utility text-title {
+  font-size: clamp(1.85rem, 1.35rem + 1.7vw, 2.9rem);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  font-weight: 720;
+  font-stretch: 88%;
+}
+
+@utility text-heading {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 660;
+}
+
+@utility text-subheading {
+  font-size: 1.0625rem;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  font-weight: 620;
+}
+
+@utility text-lead {
+  font-size: clamp(1.02rem, 0.95rem + 0.3vw, 1.18rem);
+  line-height: 1.55;
+}
+
+@utility text-body {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+@utility text-caption {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+@utility text-micro {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  letter-spacing: 0.005em;
+}
+
+@utility text-label {
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 620;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- Base ---------------------------------------------------------------- */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+/* -- Motion primitives ----------------------------------------------------- */
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.55;
+  }
+  80%,
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 0%,
+    var(--neutral-soft) 40%,
+    var(--surface-sunken) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.live-dot {
+  position: relative;
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: pulse-ring 1.8s var(--ease-soft) infinite;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* -- Landing hero: the evidence table ------------------------------------- */
+
+/* A soft wash behind the masthead: the brand colour, faded into the canvas. */
+.hero-ground {
+  background:
+    radial-gradient(60% 70% at 85% 0%, var(--accent-soft), transparent 70%),
+    linear-gradient(to bottom, var(--surface), transparent);
+  opacity: 0.8;
+}
+
+/* Surveyor's grid the evidence is laid out on; fades toward the edges. */
+.table-grid {
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(120% 110% at 50% 45%, #000 45%, transparent 100%);
+}
+
+/* The same grid in the verified colour, revealed only inside a travelling ring. */
+.table-grid-lit {
+  background-image:
+    linear-gradient(to right, var(--verified) 1.5px, transparent 1.5px),
+    linear-gradient(to bottom, var(--verified) 1.5px, transparent 1.5px),
+    radial-gradient(circle, color-mix(in oklab, var(--verified) 22%, transparent) 30%, transparent 31%);
+  background-size: 28px 28px;
+  background-position: -6px -6px, -6px -6px, 8px 8px;
+}
+
+/* Thermal paper: a torn zig-zag bottom edge. */
+.receipt-edge {
+  --tooth: 9px;
+  mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / var(--tooth) 100%,
+    linear-gradient(#000, #000) top / 100% calc(100% - var(--tooth) / 2) no-repeat;
+  mask-composite: add;
+}
+
+/* Rubber stamp ink: slightly translucent, pressed into the paper. */
+.stamp {
+  background: color-mix(in oklab, var(--verified-soft) 55%, transparent);
+  mix-blend-mode: multiply;
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--verified) 55%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .stamp {
+    mix-blend-mode: normal;
+  }
+}
+
+/* Native <dialog>: focus trap and Escape come from the platform. */
+dialog.fp-dialog {
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  max-width: min(32rem, calc(100vw - 2rem));
+  width: 100%;
+  overflow: visible;
+}
+
+dialog.fp-dialog::backdrop {
+  background: rgb(var(--shadow-rgb) / 0.42);
+  backdrop-filter: blur(2px);
+}
+
+dialog.fp-dialog[open] {
+  animation: dialog-in 220ms var(--ease-snap);
+}
+
+dialog.fp-dialog[open]::backdrop {
+  animation: backdrop-in 220ms ease-out;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .no-print {
+    display: none !important;
+  }
 }

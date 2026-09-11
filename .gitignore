@@ -12,6 +12,7 @@ CLAUDE.md
 # Node
 node_modules/
 .next/
+.next-*/
 out/
 *.tsbuildinfo
 

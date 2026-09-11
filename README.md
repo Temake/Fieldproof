@@ -32,7 +32,10 @@ python scripts/seed.py --reset          # or --all for every fixture
 ```
 
 Interactive API docs are at <http://localhost:8000/docs>. The web client lives in
-`apps/web` (`npm install && npm run dev`, port 3000).
+`apps/web` (`npm install && npm run dev`, port 3000): a landing page at `/`, the
+operations console at `/dashboard`, and the technician view at `/field/<job id>`.
+Copy `apps/web/.env.local.example` to `.env.local`; `FIELDPROOF_API_KEY` there is read
+only by the web server, which adds it to API calls, so it never reaches the browser.
 
 The `Makefile` wraps these (`make install / test / demo / api / seed / web`). It needs
 GNU make, which Windows does not ship with - use WSL, Git Bash with make installed, or

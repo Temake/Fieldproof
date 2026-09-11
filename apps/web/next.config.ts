@@ -1,12 +1,28 @@
 import type { NextConfig } from "next";
 
+// The browser talks to the FieldProof API only through app/api/[...path],
+// which adds the API key on the server. There is deliberately no rewrite:
+// a rewrite would forward requests without that header.
 const config: NextConfig = {
-  // The API is a separate FastAPI service (PRD 15.1). Proxying in dev keeps the
-  // browser on one origin so no CORS preflight sits between the click and the
-  // timeline update.
-  async rewrites() {
-    const api = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-    return [{ source: "/api/:path*", destination: `${api}/api/:path*` }];
+  // Lets a production build run beside a dev server without sharing .next.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+  reactStrictMode: true,
+  poweredByHeader: false,
+  experimental: {
+    optimizePackageImports: ["@phosphor-icons/react"],
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=()" },
+        ],
+      },
+    ];
   },
 };
 

@@ -1,24 +1,59 @@
-const TONE: Record<string, string> = {
-  VERIFIED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  CLOSED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  PARTIAL: "bg-amber-50 text-amber-700 ring-amber-200",
-  WAITING_FOR_EVIDENCE: "bg-amber-50 text-amber-700 ring-amber-200",
-  WAITING_FOR_DECISION: "bg-blue-50 text-blue-700 ring-blue-200",
-  VERIFYING: "bg-blue-50 text-blue-700 ring-blue-200",
-  UNSUPPORTED: "bg-red-50 text-red-700 ring-red-200",
-  CONTRADICTED: "bg-red-50 text-red-700 ring-red-200",
-  BLOCKING: "bg-red-50 text-red-700 ring-red-200",
-  WARNING: "bg-amber-50 text-amber-700 ring-amber-200",
-  INFO: "bg-slate-100 text-slate-600 ring-slate-200",
+import { Badge } from "./ui/badge";
+import {
+  ACTIVE_STATUSES,
+  CONFLICT_STATUS,
+  DECISION_STATUS,
+  JOB_STATUS,
+  REQUIREMENT_STATUS,
+  SEVERITY,
+} from "@/lib/vocabulary";
+import type {
+  ConflictSeverity,
+  ConflictStatus,
+  DecisionStatus,
+  JobStatus,
+  RequirementStatus,
+} from "@/lib/types";
+
+type Kind = "job" | "requirement" | "conflict" | "severity" | "decision";
+
+const TABLES = {
+  job: JOB_STATUS,
+  requirement: REQUIREMENT_STATUS,
+  conflict: CONFLICT_STATUS,
+  severity: SEVERITY,
+  decision: DECISION_STATUS,
+} as const;
+
+type StatusFor = {
+  job: JobStatus;
+  requirement: RequirementStatus;
+  conflict: ConflictStatus;
+  severity: ConflictSeverity;
+  decision: DecisionStatus;
 };
 
-export function StatusPill({ status }: { status: string }) {
-  const tone = TONE[status] ?? "bg-slate-100 text-slate-600 ring-slate-200";
+/**
+ * The one way a status is shown. Wording and colour come from
+ * lib/vocabulary.ts, so "Waiting on technician" is amber everywhere.
+ */
+export function StatusPill<K extends Kind>({
+  kind,
+  status,
+  size,
+  className,
+}: {
+  kind: K;
+  status: StatusFor[K];
+  size?: "sm" | "md";
+  className?: string;
+}) {
+  const table = TABLES[kind] as Record<string, { label: string; tone: Parameters<typeof Badge>[0]["tone"]; hint?: string }>;
+  const term = table[status] ?? { label: String(status), tone: "neutral" as const };
+  const live = kind === "job" && ACTIVE_STATUSES.has(status as JobStatus);
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${tone}`}
-    >
-      {status.replaceAll("_", " ").toLowerCase()}
-    </span>
+    <Badge tone={term.tone} live={live} size={size} className={className} title={term.hint}>
+      {term.label}
+    </Badge>
   );
 }
