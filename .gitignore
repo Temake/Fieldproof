@@ -6,7 +6,9 @@ venv/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
-
+graphify-out/
+CLAUDE.md
+.claude/
 # Node
 node_modules/
 .next/
