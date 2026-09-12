@@ -237,14 +237,27 @@ make validate        # cfn-lint the template
 make deploy          # sam build && sam deploy --guided   (needs the SAM CLI and make)
 ```
 
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) is the full runbook** - prerequisites,
+enabling Bedrock model access, building without `make`, smoke tests, wiring the web
+client, costs, troubleshooting and teardown.
+
 Before the first deploy, enable access to the Bedrock model in `BedrockModelId`
 for your region. The build uses Linux wheels (`build-ApiFunction` in the `Makefile`), so
 it works from Windows or macOS as long as `make` is available; `sam build --use-container`
 avoids needing it locally.
 
-To run the workflow on **Bedrock AgentCore Runtime** instead of the worker Lambda,
-deploy `agents/agentcore_app.py` with the AgentCore starter toolkit and invoke it with
-`{"job_id": "..."}`. Only one of the two should be subscribed to the trigger events.
+To run the workflow on **Bedrock AgentCore Runtime** instead of the worker Lambda:
+
+```bash
+pip install -e ".[agentcore]"
+agentcore configure -e agents/agentcore_app.py -r us-east-1   --requirements-file requirements-agentcore.txt
+agentcore deploy
+agentcore invoke '{"job_id": "JOB-1842"}'
+```
+
+The execution role needs access to the table, bucket and bus, and only one of the
+two workers should be subscribed to the trigger events - both are covered in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) section 10.
 
 ## What is simulated (§39)
 
