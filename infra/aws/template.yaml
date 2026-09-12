@@ -18,9 +18,18 @@ Parameters:
     Type: String
     Default: http://localhost:3000
     Description: Web client origin allowed to call the API and upload to S3.
+  WorkflowReservedConcurrency:
+    Type: Number
+    Default: -1
+    Description: >
+      Reserved concurrency for the workflow worker, or -1 to leave it unset.
+      New accounts have a total Lambda concurrency of 10 and must keep 10
+      unreserved, so any reservation fails there. Set it once your account's
+      concurrency quota has been raised.
 
 Conditions:
   HasApiKey: !Not [!Equals [!Ref ApiKey, ""]]
+  HasReservedConcurrency: !Not [!Equals [!Ref WorkflowReservedConcurrency, -1]]
 
 Globals:
   Function:
@@ -117,8 +126,12 @@ Resources:
     Properties:
       Handler: infra.aws.lambda_handlers.workflow_handler
       Timeout: 900
-      # Runs are serialized per job by the DynamoDB lock; this caps cost.
-      ReservedConcurrentExecutions: 20
+      # Runs are already serialized per job by the DynamoDB lock; a reservation
+      # only caps cost. Unset by default so the stack deploys on a new account.
+      ReservedConcurrentExecutions: !If
+        - HasReservedConcurrency
+        - !Ref WorkflowReservedConcurrency
+        - !Ref AWS::NoValue
       Policies:
         - DynamoDBCrudPolicy: { TableName: !Ref Table }
         - S3CrudPolicy: { BucketName: !Ref EvidenceBucket }
