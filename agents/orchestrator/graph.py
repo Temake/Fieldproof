@@ -122,7 +122,7 @@ def _run_once(job_id: str, run_id: str, trigger: str | None) -> RunResult:
         if get_store().get_state(job_id).job.status == JobStatus.CLOSED:
             result.outcome = "CLOSED"
             return result
-        _execute(job_id, result)
+        _executor()(job_id, result)
     except Exception as exc:
         log.exception("workflow run %s failed for %s", run_id, job_id)
         result.outcome, result.error = "FAILED", str(exc)
@@ -134,17 +134,58 @@ def _run_once(job_id: str, run_id: str, trigger: str | None) -> RunResult:
     return result
 
 
-def _execute(job_id: str, result: RunResult) -> None:
-    store = get_store()
+def _executor():
+    """The runtime that sequences the steps.
 
-    _step(result, Node.LOAD_CONTEXT, job_id)
-    load_context(job_id)
+    In-process by default; the Strands multi-agent graph when
+    FIELDPROOF_ORCHESTRATOR=strands. Both drive the same step functions in the
+    same order and read the same deterministic Branch, so the choice is a
+    deployment decision, not a behavioural one (PRD 15.1).
+    """
+    from infra.settings import get_settings
+
+    if get_settings().orchestrator == "strands":
+        from .strands_graph import execute as strands_execute
+
+        return strands_execute
+    return _execute
+
+
+@dataclass
+class Branch:
+    """What POLICY_CHECK decided.
+
+    Deterministic: every field here comes from domain/policies, never from a
+    model. Both orchestrators read the same object, which is what keeps the
+    Strands graph and the in-process graph on the same rails.
+    """
+
+    recoverable: list = field(default_factory=list)
+    escalations: list = field(default_factory=list)
+    awaiting: list = field(default_factory=list)
+
+    @property
+    def is_clean(self) -> bool:
+        return not (self.recoverable or self.escalations or self.awaiting)
+
+
+# -- Steps ------------------------------------------------------------------
+#
+# One function per node in the topology. They are the unit both orchestrators
+# execute: _execute below calls them in order, and strands_graph wraps each one
+# in a Strands graph node. Keeping them here means there is exactly one
+# implementation of the workflow, whichever runtime drives it.
+
+
+def step_load_context(job_id: str) -> dict[str, Any]:
+    context = load_context(job_id)
     _emit(job_id, EventType.AGENT_STEP_COMPLETED, "Loaded job context", node=Node.LOAD_CONTEXT)
     _begin_verification(job_id)
     _reopen_answered_clarifications(job_id)
+    return {"requirements": len(context.get("requirements", []))}
 
-    # -- PARSE_EVIDENCE ---------------------------------------------------
-    _step(result, Node.PARSE_EVIDENCE, job_id)
+
+def step_parse_evidence(job_id: str) -> dict[str, Any]:
     parsed = _parse_evidence(job_id)
     _emit(
         job_id,
@@ -153,70 +194,74 @@ def _execute(job_id: str, result: RunResult) -> None:
         node=Node.PARSE_EVIDENCE,
         **parsed,
     )
+    return parsed
 
-    # -- RECONCILE --------------------------------------------------------
-    _step(result, Node.RECONCILE, job_id)
+
+def step_reconcile(job_id: str) -> dict[str, Any]:
+    store = get_store()
     reconciliation = reconcile_state(store.get_state(job_id))
     store.save_requirements(job_id, reconciliation.requirements)
     cleared = sync_conflicts(job_id, reconciliation.conflicts)
     state = store.get_state(job_id)
-    verified = sum(
-        1 for r in state.required_requirements() if r.status == RequirementStatus.VERIFIED
-    )
+    required = state.required_requirements()
+    verified = sum(1 for r in required if r.status == RequirementStatus.VERIFIED)
     _emit(
         job_id,
         EventType.AGENT_STEP_COMPLETED,
-        f"{verified}/{len(state.required_requirements())} requirements verified",
+        f"{verified}/{len(required)} requirements verified",
         node=Node.RECONCILE,
         cleared_conflicts=cleared,
     )
+    return {"verified": verified, "required": len(required), "cleared_conflicts": cleared}
 
-    # -- POLICY_CHECK -----------------------------------------------------
-    _step(result, Node.POLICY_CHECK, job_id)
+
+def step_policy_check(job_id: str) -> Branch:
+    """Classify the job into exactly one branch. No side effects beyond auto-resolution."""
+    store = get_store()
+    state = store.get_state(job_id)
     verdicts = [decide(c, state) for c in state.open_conflicts()]
     # PRD 11 - "Can policy resolve automatically?" A conflict the policy layer
     # clears must actually be closed out, or it blocks the job forever.
     if _auto_resolve(job_id, verdicts):
         state = store.get_state(job_id)
+    return Branch(
+        recoverable=[v for v in verdicts if v.outcome == PolicyOutcome.REQUEST_EVIDENCE],
+        escalations=[v for v in verdicts if v.needs_human],
+        awaiting=[c for c in state.conflicts if c.status == ConflictStatus.AWAITING_CLARIFICATION],
+    )
 
-    recoverable = [v for v in verdicts if v.outcome == PolicyOutcome.REQUEST_EVIDENCE]
-    escalations = [v for v in verdicts if v.needs_human]
-    awaiting = [
-        c for c in state.conflicts if c.status == ConflictStatus.AWAITING_CLARIFICATION
-    ]
 
-    # -- MISSING branch: recover before escalating (PRD G4) ---------------
-    if recoverable:
-        _step(result, Node.REQUEST_EVIDENCE, job_id)
-        _request_missing(state, recoverable, result)
-        set_job_status(job_id, JobStatus.WAITING_FOR_EVIDENCE)
-        result.outcome = "WAITING_FOR_EVIDENCE"
-        return
+def step_request_evidence(job_id: str, branch: Branch, result: RunResult) -> str:
+    """MISSING branch: recover before escalating (PRD G4)."""
+    _request_missing(get_store().get_state(job_id), branch.recoverable, result)
+    set_job_status(job_id, JobStatus.WAITING_FOR_EVIDENCE)
+    return "WAITING_FOR_EVIDENCE"
 
-    # -- CONFLICT branch: one genuine human decision (PRD 12) -------------
-    if escalations:
-        _step(result, Node.HUMAN_DECISION, job_id)
-        _escalate(state, escalations, result)
-        set_job_status(job_id, JobStatus.WAITING_FOR_DECISION)
-        result.outcome = "WAITING_FOR_DECISION"
-        return
 
-    # -- CLARIFICATION branch: the supervisor asked the technician something
-    if awaiting:
-        _step(result, Node.REQUEST_EVIDENCE, job_id)
-        for conflict in awaiting:
-            decision = state.decision_by_id(conflict.resolution_decision_id or "")
-            if decision is None:
-                continue
-            outcome = action_agent.clarify(state, decision, conflict)
-            if outcome.ok and not outcome.duplicate:
-                result.technician_requests += 1
-        set_job_status(job_id, JobStatus.WAITING_FOR_EVIDENCE)
-        result.outcome = "WAITING_FOR_EVIDENCE"
-        return
+def step_human_decision(job_id: str, branch: Branch, result: RunResult) -> str:
+    """CONFLICT branch: one genuine human decision (PRD 12)."""
+    _escalate(get_store().get_state(job_id), branch.escalations, result)
+    set_job_status(job_id, JobStatus.WAITING_FOR_DECISION)
+    return "WAITING_FOR_DECISION"
 
-    # -- CLEAN branch: finish the job ------------------------------------
-    _step(result, Node.ACTION, job_id)
+
+def step_clarify(job_id: str, branch: Branch, result: RunResult) -> str:
+    """CLARIFICATION branch: the supervisor asked the technician something."""
+    state = get_store().get_state(job_id)
+    for conflict in branch.awaiting:
+        decision = state.decision_by_id(conflict.resolution_decision_id or "")
+        if decision is None:
+            continue
+        outcome = action_agent.clarify(state, decision, conflict)
+        if outcome.ok and not outcome.duplicate:
+            result.technician_requests += 1
+    set_job_status(job_id, JobStatus.WAITING_FOR_EVIDENCE)
+    return "WAITING_FOR_EVIDENCE"
+
+
+def step_action(job_id: str, result: RunResult) -> str:
+    """CLEAN branch: finish the job."""
+    store = get_store()
     set_job_status(job_id, JobStatus.VERIFIED)
     _emit(job_id, EventType.JOB_VERIFIED, "Job verified", node=Node.ACTION)
 
@@ -224,8 +269,41 @@ def _execute(job_id: str, result: RunResult) -> None:
     result.detail = {k: v.to_dict() if hasattr(v, "to_dict") else v for k, v in detail.items()}
     closed = store.get_state(job_id).job.status == JobStatus.CLOSED
     # A failed external action leaves the job VERIFIED for a retry (PRD 36).
-    result.outcome = "CLOSED" if closed else "VERIFIED"
-    if closed:
+    return "CLOSED" if closed else "VERIFIED"
+
+
+def _execute(job_id: str, result: RunResult) -> None:
+    """In-process orchestrator: the steps above, in order, with no runtime between them."""
+    _step(result, Node.LOAD_CONTEXT, job_id)
+    step_load_context(job_id)
+
+    _step(result, Node.PARSE_EVIDENCE, job_id)
+    step_parse_evidence(job_id)
+
+    _step(result, Node.RECONCILE, job_id)
+    step_reconcile(job_id)
+
+    _step(result, Node.POLICY_CHECK, job_id)
+    branch = step_policy_check(job_id)
+
+    if branch.recoverable:
+        _step(result, Node.REQUEST_EVIDENCE, job_id)
+        result.outcome = step_request_evidence(job_id, branch, result)
+        return
+
+    if branch.escalations:
+        _step(result, Node.HUMAN_DECISION, job_id)
+        result.outcome = step_human_decision(job_id, branch, result)
+        return
+
+    if branch.awaiting:
+        _step(result, Node.REQUEST_EVIDENCE, job_id)
+        result.outcome = step_clarify(job_id, branch, result)
+        return
+
+    _step(result, Node.ACTION, job_id)
+    result.outcome = step_action(job_id, result)
+    if result.outcome == "CLOSED":
         _step(result, Node.DONE, job_id)
 
 

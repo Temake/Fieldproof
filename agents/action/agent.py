@@ -35,6 +35,38 @@ around it. Never claim an action succeeded unless the tool said so.
 """
 
 
+#: Used when the model drives closeout itself through the Strands tool loop.
+#: The tools enforce the rules; the prompt only explains them (PRD 18).
+AGENTIC_PROMPT = SYSTEM_PROMPT + """
+
+You have tools. Work in this order:
+
+  1. fieldproof_job_context - always first, to see what the job still needs.
+  2. If anything required is missing or unreadable, ask the technician once,
+     in a single message covering everything.
+  3. If a conflict needs a human, escalate it as one decision.
+  4. Only when nothing is outstanding: generate the report, invoice, close.
+
+A tool that answers with ok=false has REFUSED you. It will name the invariant
+that stopped it. Read the reason, fix the cause or stop - never call the same
+tool again hoping for a different answer, and never report an action as done
+when the tool refused it.
+"""
+
+
+def build_tool_agent(tools: list[Any] | None = None) -> Any:
+    """A Strands agent that performs closeout through the tool loop.
+
+    Every tool it may call is authorized independently (INV-010), so the model
+    chooses the sequence and the domain layer decides what is permitted. Needs
+    the `agents` extra and Bedrock credentials.
+    """
+    from agents.runtime import build_agent
+    from tools.strands_tools import CLOSEOUT_TOOLS
+
+    return build_agent("action", AGENTIC_PROMPT, tools=tools or CLOSEOUT_TOOLS)
+
+
 def request_evidence(
     state: JobState, requirement_ids: list[str], message: str, *, idempotency_key: str
 ):

@@ -51,6 +51,10 @@ class Settings:
         default_factory=lambda: _env("BEDROCK_REGION", _env("AWS_REGION", "us-east-1"))
     )
     stub_agents: bool = field(default_factory=lambda: _flag("FIELDPROOF_STUB_AGENTS", True))
+    orchestrator: str = field(
+        default_factory=lambda: _env("FIELDPROOF_ORCHESTRATOR", "inprocess").strip().lower()
+    )
+    """Which runtime sequences the workflow steps: "inprocess" or "strands"."""
 
     # -- API security (PRD 34) -------------------------------------------
     api_key: str = field(default_factory=lambda: _env("FIELDPROOF_API_KEY"))

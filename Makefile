@@ -1,5 +1,5 @@
 # FieldProof - development tasks
-.PHONY: install api web seed seed-all demo test fixtures lint validate deploy clean
+.PHONY: install api web seed seed-all demo demo-strands live-check agentic test fixtures lint validate deploy clean
 
 install:            ## install python + node dependencies
 	pip install -e ".[dev]"
@@ -19,6 +19,15 @@ seed-all:           ## seed every fixture plus the hero job
 
 demo:               ## run the whole PRD 42 demo headless
 	python -m demo.run_demo
+
+demo-strands:       ## same demo, sequenced by the Strands multi-agent graph
+	FIELDPROOF_ORCHESTRATOR=strands python -m demo.run_demo
+
+live-check:         ## read a real artifact through Bedrock: make live-check FILE=~/receipt.jpg
+	FIELDPROOF_STUB_AGENTS=0 python scripts/live_check.py "$(FILE)" $(if $(TYPE),--type $(TYPE),)
+
+agentic:            ## let the model drive closeout through the Strands tool loop
+	FIELDPROOF_STUB_AGENTS=0 python scripts/agentic_closeout.py $(or $(JOB),JOB-1842)
 
 test:               ## run the invariant and scenario suites
 	python -m pytest -q

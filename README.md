@@ -19,7 +19,7 @@ Requires Python 3.11+ and Node 20+.
 
 ```bash
 pip install -e ".[dev]"      # backend + test tooling
-python -m pytest -q          # 81 tests, including the ten core invariants (§32)
+python -m pytest -q          # 113 tests, including the ten core invariants (§32)
 python -m demo.run_demo      # the §42 demo, headless, in the terminal
 ```
 
@@ -61,8 +61,10 @@ run the commands above directly.
                           └─ pause ────┴── the next event re-enters the workflow
 ```
 
-**LLM proposes. Policy authorizes. Tool executes (§18).** Models are used for exactly
-two things: reading artifacts (photos, receipts, documents, voice notes) into
+**LLM proposes. Policy authorizes. Tool executes (§18).** Most agent demos let the
+model decide. When the decision moves money, that is a bug, not a feature - so
+FieldProof puts the model where judgement is actually needed and nowhere else.
+Models are used for exactly two things: reading artifacts (photos, receipts, documents, voice notes) into
 *observations*, and wording text a human will read. Everything that decides - claim
 construction, evidence compatibility, reconciliation, policy verdicts, authorization,
 state transitions - is deterministic code in `domain/`, and every side effect goes
@@ -89,17 +91,67 @@ Properties the workflow guarantees, each covered by tests:
 - **Tamper-evident receipt.** The receipt is sealed once at close with a SHA-256 over its
   canonical form; `GET /receipt/verify` recomputes it (§29).
 
+## Agents and the Strands SDK (§15.1, §16)
+
+Five agents (§16), built with the [Strands Agents SDK](https://strandsagents.com)
+on Bedrock:
+
+| Agent | Uses a model for | Decides |
+| --- | --- | --- |
+| Context | nothing - the work order is already structured | nothing |
+| Evidence | reading photos, receipts, PDFs and voice notes into observations | nothing |
+| Reconciliation | writing the supervisor's summary | nothing - `domain/reconciliation` compares |
+| Policy | wording the one question a supervisor answers | nothing - `domain/policies` rules the verdict |
+| Action | wording technician and customer messages | nothing - `domain/authorization` gates every tool |
+
+**The graph.** `agents/orchestrator/strands_graph.py` is a real Strands `Graph`:
+seven nodes, conditional edges, execution and node timeouts, and a cap on node
+executions. Its nodes are custom `MultiAgentBase` nodes rather than agents,
+because PRD 18 puts every decision in code - a model may read a photo, but it
+may not vote on whether a requirement is met. The model work lives inside the
+nodes that need judgement. That is the hybrid the Strands graph docs describe:
+model nodes for judgement, deterministic nodes for control.
+
+```
+LOAD_CONTEXT -> PARSE_EVIDENCE -> RECONCILE -> POLICY_CHECK
+                                                 |- needs_evidence -> REQUEST_EVIDENCE
+                                                 |- needs_human ----> HUMAN_DECISION
+                                                 `- is_clean -------> ACTION
+```
+
+Both orchestrators call the same step functions and read the same deterministic
+`Branch`, so the choice is a deployment decision rather than a behavioural one.
+`tests/test_strands_graph.py` runs the whole 17-fixture evaluation dataset
+through the Strands path and asserts the same outcomes.
+
+**The tool loop.** `tools/strands_tools.py` publishes the closeout tools as
+Strands `@tool` functions, so a model can drive a job itself - propose the
+action, call the tool, read the result. That is safe precisely because
+authorization is not in the prompt: a model that proposes closing an unfinished
+job gets back `ok=false` naming the invariant that stopped it, and the job does
+not move (`tests/test_strands_tools.py`). Try it:
+
+```bash
+FIELDPROOF_STUB_AGENTS=0 python scripts/agentic_closeout.py JOB-1842
+```
+
+**Deployment.** `agents/agentcore_app.py` is a Bedrock AgentCore Runtime
+entrypoint over the same workflow; the SAM template deploys the same code as an
+EventBridge-triggered Lambda instead. Only one of the two should subscribe to
+the trigger events.
+
 ## Repository layout (§31)
 
 | Path | What lives there |
 | --- | --- |
 | `domain/` | Deterministic core: models, enums, state machine, claim/evidence compatibility, reconciliation, policy rules, `authorize()`. No I/O, no model calls. |
-| `tools/` | The narrow tools agents may call (§24). Each validates, authorizes, executes, emits an event, returns a structured result. |
+| `tools/` | The narrow tools agents may call (§24). Each validates, authorizes, executes, emits an event, returns a structured result. `strands_tools.py` publishes them as Strands `@tool`s. |
 | `agents/` | The five agents (§16) and the orchestrator. `agents/orchestrator/graph.py` is the workflow; `strands_graph.py` is the same topology as a Strands graph; `agentcore_app.py` is the AgentCore Runtime entry point. |
 | `apps/api/` | FastAPI service (§23). |
 | `apps/web/` | Next.js client (§14 screens). |
 | `infra/` | Settings, adapters (in-memory / DynamoDB store, filesystem / S3 objects, in-process / EventBridge bus, simulated notifier and invoicing), and `infra/aws/` - Lambda handlers and the SAM template. |
 | `demo/` | 17 evaluation fixtures (§37), the fixture loader, the scenario runner and the headless demo. |
+| `scripts/` | Seeding, fixture generation, `live_check.py` (real Bedrock read) and `agentic_closeout.py` (model-driven tool loop). |
 | `tests/` | Invariants, workflow safety, model path, HTTP API, AWS adapters. |
 
 ## Running modes
@@ -111,9 +163,19 @@ Properties the workflow guarantees, each covered by tests:
 | AWS | `FIELDPROOF_MODE=aws` (set by the SAM template) | DynamoDB / S3 / EventBridge | Bedrock, Amazon Transcribe for audio |
 
 In offline mode the Evidence Agent uses the `fixture_reading` each fixture artifact
-declares in its metadata, so the workflow, tests and demo are deterministic. With stubs
-off, every artifact is read through Bedrock instead; the tests cover that path with a
-fake model (`tests/test_evidence_agent.py`).
+declares in its metadata, so the workflow, tests and demo are deterministic. That
+determinism is also why the fixture artifacts are text stand-ins rather than
+photographs: `scripts/live_check.py` is there to read a real one through Bedrock and
+print the observations the reconciliation engine would receive. With stubs off, every
+artifact goes through the model instead; the tests cover that path with a fake model
+(`tests/test_evidence_agent.py`).
+
+Either runtime can sequence the workflow, and both run the same steps:
+
+| `FIELDPROOF_ORCHESTRATOR` | Runs the workflow as |
+| --- | --- |
+| `inprocess` (default) | a deterministic sequencer - `agents/orchestrator/graph.py` |
+| `strands` | a Strands multi-agent graph - `agents/orchestrator/strands_graph.py` |
 
 All configuration is environment variables - see [`.env.example`](.env.example).
 
@@ -199,3 +261,7 @@ deploy `agents/agentcore_app.py` with the AgentCore starter toolkit and invoke i
   uploaded as text (`.txt` or `text/*`) and is used as its own transcript.
 - The in-process event bus serves a single API process. Multi-process deployments use
   AWS mode, where the DynamoDB lock serializes runs across Lambdas.
+
+## License
+
+MIT - see [LICENSE](LICENSE).
